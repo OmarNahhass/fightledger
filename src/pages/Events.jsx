@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getEvents, createEvent, getFightsByEvent, createFight } from '../lib/db'
-import { searchEvent, getEventDetails } from '../lib/mmaApi'
+import { getFightsByDate } from '../lib/mmaApi'
 
 const PROMOTIONS = ['UFC', 'Bellator', 'PFL', 'ONE FC', 'BKFC', 'Other']
 const WEIGHT_CLASSES = ['Strawweight', 'Flyweight', 'Bantamweight', 'Featherweight', 'Lightweight', 'Welterweight', 'Middleweight', 'Light Heavyweight', 'Heavyweight']
@@ -79,44 +79,38 @@ export default function Events() {
   const handleFetchFights = async (event) => {
     setFetchingFights(event.id)
     try {
-      const searchData = await searchEvent(event.name)
-      console.log('Search data:', searchData)
+      const apiFights = await getFightsByDate(event.event_date)
 
-      const events = searchData?.events || searchData?.response || []
-      if (!events.length) {
-        alert('Event not found. Make sure the name matches exactly e.g. "UFC 315"')
-        return
-      }
-
-      const apiEvent = events[0]
-      const eventData = await getEventDetails(apiEvent.id || apiEvent.eventId)
-      console.log('Event data:', eventData)
-
-      const apiFights = eventData?.fights || eventData?.cards?.flatMap(c => c.fights) || []
       if (!apiFights.length) {
-        alert('No fights found for this event yet.')
+        alert('No fights found from the API for this date yet. It may be too far in the future, or not covered by the free plan.')
         return
       }
 
       let created = 0
-      for (const f of apiFights) {
-        const fighterA = f.fighters?.[0]?.name || f.fighter1?.name || f.home?.name
-        const fighterB = f.fighters?.[1]?.name || f.fighter2?.name || f.away?.name
+      for (const [i, f] of apiFights.entries()) {
+        const fighterA = f.fighters?.first?.name
+        const fighterB = f.fighters?.second?.name
         if (!fighterA || !fighterB) continue
+
+        const winner = f.fighters?.first?.winner ? fighterA
+          : f.fighters?.second?.winner ? fighterB
+          : null
+
         await createFight({
           event_id: event.id,
           fighter_a: fighterA,
           fighter_b: fighterB,
-          weight_class: f.weightClass || f.weight_class || '',
-          rounds: f.rounds || 3,
-          fight_order: f.order || f.position || null,
+          weight_class: f.category || '',
+          rounds: 3,
+          fight_order: i + 1,
+          winner,
         })
         created++
       }
 
       const updated = await getFightsByEvent(event.id)
       setFights(prev => ({ ...prev, [event.id]: updated }))
-      alert(`✅ Imported ${created} fights!`)
+      alert(`✅ Imported ${created} fights! (Card: "${apiFights[0]?.slug || 'unknown'}")`)
     } catch (err) {
       console.error(err)
       alert('Something went wrong. Check the console.')
