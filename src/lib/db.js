@@ -1,22 +1,41 @@
 import { supabase } from "./supabase";
 
+const getUserId = async () => {
+  const { data } = await supabase.auth.getUser();
+  return data?.user?.id;
+};
+
+// ── SETTINGS ─────────────────────────────────────────
+
 export const getUnitSize = async () => {
   const { data, error } = await supabase
     .from("settings")
     .select("value")
     .eq("key", "unit_size")
-    .single();
+    .maybeSingle();
   if (error) throw error;
+  if (!data) {
+    const userId = await getUserId();
+    await supabase
+      .from("settings")
+      .insert({ key: "unit_size", value: "10", user_id: userId });
+    return 10;
+  }
   return Number(data.value);
 };
 
 export const setUnitSize = async (value) => {
+  const userId = await getUserId();
   const { error } = await supabase
     .from("settings")
-    .update({ value: String(value) })
-    .eq("key", "unit_size");
+    .upsert(
+      { user_id: userId, key: "unit_size", value: String(value) },
+      { onConflict: "user_id,key" },
+    );
   if (error) throw error;
 };
+
+// ── EVENTS ──────────────────────────────────────────
 
 export const getEvents = async () => {
   const { data, error } = await supabase
@@ -36,6 +55,13 @@ export const createEvent = async (event) => {
   if (error) throw error;
   return data;
 };
+
+export const deleteEvent = async (eventId) => {
+  const { error } = await supabase.from("events").delete().eq("id", eventId);
+  if (error) throw error;
+};
+
+// ── FIGHTS ──────────────────────────────────────────
 
 export const getFightsByEvent = async (eventId) => {
   const { data, error } = await supabase
@@ -71,6 +97,8 @@ export const updateFightResult = async (
   return data;
 };
 
+// ── BETS ────────────────────────────────────────────
+
 export const getBets = async () => {
   const { data, error } = await supabase
     .from("bet_summary")
@@ -81,9 +109,10 @@ export const getBets = async () => {
 };
 
 export const createBet = async (bet) => {
+  const userId = await getUserId();
   const { data, error } = await supabase
     .from("bets")
-    .insert(bet)
+    .insert({ ...bet, user_id: userId })
     .select()
     .single();
   if (error) throw error;
@@ -101,6 +130,8 @@ export const updateBetResult = async (betId, { result, actual_payout }) => {
   return data;
 };
 
+// ── BANKROLL ─────────────────────────────────────────
+
 export const getBankrollHistory = async () => {
   const { data, error } = await supabase
     .from("bankroll_snapshots")
@@ -111,14 +142,17 @@ export const getBankrollHistory = async () => {
 };
 
 export const addBankrollSnapshot = async (balance, notes = "") => {
+  const userId = await getUserId();
   const { data, error } = await supabase
     .from("bankroll_snapshots")
-    .insert({ balance, notes })
+    .insert({ balance, notes, user_id: userId })
     .select()
     .single();
   if (error) throw error;
   return data;
 };
+
+// ── STATS ────────────────────────────────────────────
 
 export const getBetStats = async () => {
   const { data, error } = await supabase
@@ -159,8 +193,4 @@ export const getBetStats = async () => {
         : 0,
     pendingBets: data.filter((b) => b.result === "pending").length,
   };
-};
-export const deleteEvent = async (eventId) => {
-  const { error } = await supabase.from("events").delete().eq("id", eventId);
-  if (error) throw error;
 };

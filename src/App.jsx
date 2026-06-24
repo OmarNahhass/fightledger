@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
+import { AuthProvider, useAuth } from './lib/AuthContext'
+import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Events from './pages/Events'
 import Bets from './pages/Bets'
@@ -13,12 +15,20 @@ const navItems = [
   { to: '/settings', label: 'Settings', icon: '⚙️' },
 ]
 
-export default function App() {
+function AppShell() {
+  const { session, user, signOut, loading } = useAuth()
+
+  if (loading) {
+    return <div className="min-h-screen bg-gray-950 flex items-center justify-center text-gray-400">Loading...</div>
+  }
+
+  if (!session) {
+    return <Login />
+  }
+
   return (
     <BrowserRouter>
       <div className="flex min-h-screen bg-gray-950 text-white">
-
-        {/* Sidebar */}
         <aside className="w-56 bg-gray-900 border-r border-gray-800 flex flex-col p-4 gap-1">
           <div className="text-lg font-bold text-white mb-6 px-2">
             🥋 MMA Bets
@@ -40,9 +50,19 @@ export default function App() {
               {label}
             </NavLink>
           ))}
+
+          <div className="mt-auto pt-4 border-t border-gray-800">
+            <p className="text-xs text-gray-500 px-2 mb-2 truncate">{user?.email}</p>
+            <button
+              onClick={signOut}
+              className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+            >
+              <span>🚪</span>
+              Sign out
+            </button>
+          </div>
         </aside>
 
-        {/* Main content */}
         <main className="flex-1 p-8 overflow-y-auto">
           <Routes>
             <Route path="/" element={<Dashboard />} />
@@ -52,8 +72,15 @@ export default function App() {
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>
-
       </div>
     </BrowserRouter>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
   )
 }
