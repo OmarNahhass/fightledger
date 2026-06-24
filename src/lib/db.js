@@ -160,3 +160,7 @@ export const getBetStats = async () => {
     pendingBets: data.filter((b) => b.result === "pending").length,
   };
 };
+export const deleteEvent = async (eventId) => {
+  const { error } = await supabase.from("events").delete().eq("id", eventId);
+  if (error) throw error;
+};

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getEvents, createEvent, getFightsByEvent, createFight } from '../lib/db'
+import { getEvents, createEvent, deleteEvent, getFightsByEvent, createFight } from '../lib/db'
 import { getFightsByDate } from '../lib/mmaApi'
 
 const PROMOTIONS = ['UFC', 'Bellator', 'PFL', 'ONE FC', 'BKFC', 'Other']
@@ -43,6 +43,19 @@ export default function Events() {
       console.error(err)
     } finally {
       setSavingEvent(false)
+    }
+  }
+
+  const handleDeleteEvent = async (event) => {
+    const confirmed = window.confirm(`Delete "${event.name}"? This will also delete all fights linked to it. Bets stay, but lose their fight link.`)
+    if (!confirmed) return
+    try {
+      await deleteEvent(event.id)
+      setEvents(prev => prev.filter(e => e.id !== event.id))
+      if (expandedEvent === event.id) setExpandedEvent(null)
+    } catch (err) {
+      console.error(err)
+      alert('Failed to delete event.')
     }
   }
 
@@ -204,11 +217,11 @@ export default function Events() {
           {events.map(event => (
             <div key={event.id} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
 
-              <div
-                className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-gray-800/50 transition-colors"
-                onClick={() => handleExpandEvent(event.id)}
-              >
-                <div>
+              <div className="px-6 py-4 flex items-center justify-between hover:bg-gray-800/50 transition-colors">
+                <div
+                  className="flex-1 cursor-pointer"
+                  onClick={() => handleExpandEvent(event.id)}
+                >
                   <div className="flex items-center gap-3 mb-1">
                     <span className="font-semibold">{event.name}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(event.status)}`}>
@@ -220,7 +233,21 @@ export default function Events() {
                     {event.location && ` · ${event.location}`}
                   </p>
                 </div>
-                <span className="text-gray-500 text-sm">{expandedEvent === event.id ? '▲' : '▼'}</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event) }}
+                    className="text-gray-500 hover:text-red-400 text-sm transition-colors"
+                    title="Delete event"
+                  >
+                    🗑
+                  </button>
+                  <span
+                    className="text-gray-500 text-sm cursor-pointer"
+                    onClick={() => handleExpandEvent(event.id)}
+                  >
+                    {expandedEvent === event.id ? '▲' : '▼'}
+                  </span>
+                </div>
               </div>
 
               {expandedEvent === event.id && (
