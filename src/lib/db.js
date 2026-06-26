@@ -5,6 +5,40 @@ const getUserId = async () => {
   return data?.user?.id;
 };
 
+// ── PROFILES ─────────────────────────────────────────
+
+export const ensureProfile = async (userId, defaultName) => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) {
+    await supabase
+      .from("profiles")
+      .insert({ id: userId, display_name: defaultName });
+  }
+};
+
+export const getDisplayName = async (userId) => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("display_name")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.display_name || "";
+};
+
+export const updateDisplayName = async (userId, name) => {
+  const { error } = await supabase
+    .from("profiles")
+    .update({ display_name: name })
+    .eq("id", userId);
+  if (error) throw error;
+};
+
 // ── SETTINGS ─────────────────────────────────────────
 
 export const getUnitSize = async () => {
@@ -98,12 +132,16 @@ export const updateFightResult = async (
 };
 
 // ── BETS ────────────────────────────────────────────
+// Pass a userId to get just that person's bets (personal pages).
+// Pass nothing to get everyone's bets (leaderboard).
 
-export const getBets = async () => {
-  const { data, error } = await supabase
+export const getBets = async (userId = null) => {
+  let query = supabase
     .from("bet_summary")
     .select("*")
     .order("event_date", { ascending: false });
+  if (userId) query = query.eq("user_id", userId);
+  const { data, error } = await query;
   if (error) throw error;
   return data;
 };
@@ -153,11 +191,14 @@ export const addBankrollSnapshot = async (balance, notes = "") => {
 };
 
 // ── STATS ────────────────────────────────────────────
+// Pass a userId for personal stats (Dashboard). Omit for everyone.
 
-export const getBetStats = async () => {
-  const { data, error } = await supabase
+export const getBetStats = async (userId = null) => {
+  let query = supabase
     .from("bet_summary")
     .select("result, stake, stake_units, profit_loss, odds");
+  if (userId) query = query.eq("user_id", userId);
+  const { data, error } = await query;
   if (error) throw error;
 
   const settled = data.filter((b) => b.result !== "pending");

@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Events from './pages/Events'
 import Bets from './pages/Bets'
 import Bankroll from './pages/Bankroll'
+import Leaderboard from './pages/Leaderboard'
 import Settings from './pages/Settings'
 
 const navItems = [
@@ -12,6 +13,7 @@ const navItems = [
   { to: '/events', label: 'Events', icon: '🥊' },
   { to: '/bets', label: 'Bets', icon: '💰' },
   { to: '/bankroll', label: 'Bankroll', icon: '📈' },
+  { to: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
   { to: '/settings', label: 'Settings', icon: '⚙️' },
 ]
 
@@ -69,6 +71,7 @@ function AppShell() {
             <Route path="/events" element={<Events />} />
             <Route path="/bets" element={<Bets />} />
             <Route path="/bankroll" element={<Bankroll />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>

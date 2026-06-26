@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getBetStats, getUnitSize } from '../lib/db'
+import { useAuth } from '../lib/AuthContext'
 import ProfitChart from '../components/ProfitChart'
 
 const StatCard = ({ label, value, sub, color = 'text-white' }) => (
@@ -11,16 +12,18 @@ const StatCard = ({ label, value, sub, color = 'text-white' }) => (
 )
 
 export default function Dashboard() {
+  const { user } = useAuth()
   const [stats, setStats] = useState(null)
   const [unitSize, setUnitSize] = useState(10)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([getBetStats(), getUnitSize()])
+    if (!user) return
+    Promise.all([getBetStats(user.id), getUnitSize()])
       .then(([s, u]) => { setStats(s); setUnitSize(u) })
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [])
+  }, [user])
 
   if (loading || !stats) return <p className="text-gray-400">Loading...</p>
 
@@ -51,7 +54,7 @@ export default function Dashboard() {
               color={roi >= 0 ? 'text-green-400' : 'text-red-400'} />
           </div>
 
-          <ProfitChart />
+          <ProfitChart userId={user.id} />
         </>
       )}
     </div>

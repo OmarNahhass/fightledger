@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { getBets, getEvents, getFightsByEvent, createBet, updateBetResult, getUnitSize } from '../lib/db'
+import { useAuth } from '../lib/AuthContext'
 
 const BET_TYPES = ['moneyline', 'parlay', 'round_prop', 'method_prop', 'over_under', 'other']
 const empty = { fight_id: '', bet_type: 'moneyline', pick: '', odds: '', stake_units: '', notes: '' }
@@ -18,6 +19,7 @@ const resultColor = (result) => {
 }
 
 export default function Bets() {
+  const { user } = useAuth()
   const [bets, setBets] = useState([])
   const [events, setEvents] = useState([])
   const [fights, setFights] = useState([])
@@ -36,10 +38,10 @@ export default function Bets() {
   const [filterType, setFilterType] = useState('all')
 
   useEffect(() => {
-    getBets().then(setBets).catch(console.error)
+    if (user) getBets(user.id).then(setBets).catch(console.error)
     getEvents().then(setEvents).catch(console.error)
     getUnitSize().then(setUnitSize).catch(console.error).finally(() => setLoading(false))
-  }, [])
+  }, [user])
 
   const selectedFight = fights.find(f => f.id === form.fight_id)
 

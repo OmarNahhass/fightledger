@@ -5,16 +5,17 @@ import { calcProfitUnits } from '../lib/calc'
 
 const isProp = (betType) => ['round_prop', 'method_prop', 'over_under'].includes(betType)
 
-export default function ProfitChart() {
+export default function ProfitChart({ userId }) {
   const [bets, setBets] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getBets()
+    if (!userId) return
+    getBets(userId)
       .then(setBets)
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [])
+  }, [userId])
 
   const chartData = useMemo(() => {
     const settled = bets
