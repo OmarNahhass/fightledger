@@ -28,6 +28,7 @@ export default function Bets() {
   const [selectedEvent, setSelectedEvent] = useState('')
   const [saving, setSaving] = useState(false)
   const [settling, setSettling] = useState(null)
+  const [customPick, setCustomPick] = useState(false)
 
   // Filters
   const [filterEvent, setFilterEvent] = useState('all')
@@ -40,15 +41,41 @@ export default function Bets() {
     getUnitSize().then(setUnitSize).catch(console.error).finally(() => setLoading(false))
   }, [])
 
+  const selectedFight = fights.find(f => f.id === form.fight_id)
+
   const handleEventChange = async (eventId) => {
     setSelectedEvent(eventId)
-    setForm(f => ({ ...f, fight_id: '' }))
+    setForm(f => ({ ...f, fight_id: '', pick: '' }))
+    setCustomPick(false)
     if (!eventId) return setFights([])
     const f = await getFightsByEvent(eventId)
     setFights(f)
   }
 
   const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
+
+  const handleFightChange = (e) => {
+    setForm(f => ({ ...f, fight_id: e.target.value, pick: '' }))
+    setCustomPick(false)
+  }
+
+  const handlePickSelect = (e) => {
+    const val = e.target.value
+    if (val === '__custom') {
+      setCustomPick(true)
+      setForm(f => ({ ...f, pick: '' }))
+    } else {
+      setCustomPick(false)
+      setForm(f => ({ ...f, pick: val }))
+    }
+  }
+
+  const resetForm = () => {
+    setForm(empty)
+    setSelectedEvent('')
+    setFights([])
+    setCustomPick(false)
+  }
 
   const handleSubmit = async () => {
     if (!form.pick || !form.odds || !form.stake_units) return
@@ -71,9 +98,7 @@ export default function Bets() {
       }
       const newBet = await createBet(bet)
       setBets(prev => [newBet, ...prev])
-      setForm(empty)
-      setSelectedEvent('')
-      setFights([])
+      resetForm()
       setShowForm(false)
     } catch (err) {
       console.error(err)
@@ -105,7 +130,6 @@ export default function Bets() {
 
   const potentialUnits = calcPayoutUnits(form.stake_units, form.odds)
 
-  // Unique event names present in bets, for the filter dropdown
   const eventOptions = useMemo(() => {
     const names = new Set(bets.map(b => b.event_name).filter(Boolean))
     return Array.from(names)
@@ -199,7 +223,7 @@ export default function Bets() {
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Fight</label>
-              <select name="fight_id" value={form.fight_id} onChange={handleChange} disabled={!fights.length}
+              <select value={form.fight_id} onChange={handleFightChange} disabled={!fights.length}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500 disabled:opacity-40">
                 <option value="">Select fight (optional)</option>
                 {fights.map(f => <option key={f.id} value={f.id}>{f.fighter_a} vs {f.fighter_b}</option>)}
@@ -214,8 +238,27 @@ export default function Bets() {
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Pick *</label>
-              <input name="pick" value={form.pick} onChange={handleChange} placeholder="e.g. Islam Makhachev"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500" />
+              {selectedFight && !customPick ? (
+                <select value={form.pick} onChange={handlePickSelect}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500">
+                  <option value="">Select fighter</option>
+                  <option value={selectedFight.fighter_a}>{selectedFight.fighter_a}</option>
+                  <option value={selectedFight.fighter_b}>{selectedFight.fighter_b}</option>
+                  <option value="__custom">Other (type manually)</option>
+                </select>
+              ) : (
+                <>
+                  <input name="pick" value={form.pick} onChange={handleChange}
+                    placeholder="e.g. Islam Makhachev or Over 2.5 rounds"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500" />
+                  {selectedFight && (
+                    <button type="button" onClick={() => setCustomPick(false)}
+                      className="text-xs text-gray-500 hover:text-white mt-1 transition-colors">
+                      ← Choose fighter instead
+                    </button>
+                  )}
+                </>
+              )}
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Odds (American) *</label>
@@ -250,7 +293,7 @@ export default function Bets() {
               className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
               {saving ? 'Saving...' : 'Save bet'}
             </button>
-            <button onClick={() => { setShowForm(false); setForm(empty); setSelectedEvent(''); setFights([]) }}
+            <button onClick={() => { resetForm(); setShowForm(false) }}
               className="text-gray-400 hover:text-white text-sm px-4 py-2 rounded-lg transition-colors">
               Cancel
             </button>
