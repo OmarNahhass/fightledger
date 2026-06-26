@@ -45,13 +45,28 @@ export default function Dashboard() {
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <StatCard label="Record" value={`${stats.wins}W - ${stats.losses}L`} sub={`${stats.pendingBets} pending`} />
-            <StatCard label="Win rate" value={`${stats.winRate}%`} sub={`${stats.totalBets} settled bets`}
-              color={Number(stats.winRate) >= 50 ? 'text-green-400' : 'text-red-400'} />
-            <StatCard label="Units profit" value={`${profit >= 0 ? '+' : ''}${profit.toFixed(2)}u`}
-              sub={`$${(profit * unitSize).toFixed(2)}`} color={profitColor} />
-            <StatCard label="ROI" value={`${roi >= 0 ? '+' : ''}${roi}%`} sub={`${stats.totalUnitsStaked}u staked`}
-              color={roi >= 0 ? 'text-green-400' : 'text-red-400'} />
+            <StatCard
+              label="Units profit"
+              value={`${profit >= 0 ? '+' : ''}${profit.toFixed(2)}u`}
+              sub={`$${(profit * unitSize).toFixed(2)}`}
+              color={profitColor}
+            />
+            <StatCard
+              label="ROI"
+              value={`${roi >= 0 ? '+' : ''}${roi}%`}
+              sub={`${stats.totalUnitsStaked}u staked`}
+              color={roi >= 0 ? 'text-green-400' : 'text-red-400'}
+            />
+            <StatCard
+              label="Total bets"
+              value={stats.totalBets}
+              sub={`${stats.pendingBets} pending`}
+            />
+            <StatCard
+              label="Avg stake"
+              value={`${stats.totalBets > 0 ? (Number(stats.totalUnitsStaked) / stats.totalBets).toFixed(2) : '0.00'}u`}
+              sub="per bet"
+            />
           </div>
 
           <ProfitChart userId={user.id} />

@@ -30,9 +30,7 @@ export default function Leaderboard() {
           userId: key,
           name: b.display_name || 'Anonymous bettor',
           bets: [],
-          wins: 0,
-          losses: 0,
-          pushes: 0,
+          settledCount: 0,
           pending: 0,
           unitsStaked: 0,
           unitsProfit: 0,
@@ -45,21 +43,15 @@ export default function Leaderboard() {
         u.pending++
       } else {
         u.unitsProfit += calcProfitUnits(b.stake_units, b.odds, b.result)
-        if (b.result === 'win') u.wins++
-        else if (b.result === 'loss') u.losses++
-        else if (b.result === 'push') u.pushes++
+        u.settledCount++
       }
     }
 
     return Object.values(byUser)
-      .map(u => {
-        const settled = u.wins + u.losses
-        return {
-          ...u,
-          winRate: settled ? (u.wins / settled * 100).toFixed(1) : 0,
-          roi: u.unitsStaked ? (u.unitsProfit / u.unitsStaked * 100).toFixed(1) : 0,
-        }
-      })
+      .map(u => ({
+        ...u,
+        roi: u.unitsStaked ? (u.unitsProfit / u.unitsStaked * 100).toFixed(1) : 0,
+      }))
       .sort((a, b) => b.unitsProfit - a.unitsProfit)
   }, [bets])
 
@@ -91,7 +83,7 @@ export default function Leaderboard() {
                   <div>
                     <p className="font-semibold">{u.name}</p>
                     <p className="text-gray-500 text-sm">
-                      {u.wins}W - {u.losses}L{u.pushes ? ` - ${u.pushes}P` : ''} · {u.winRate}% win rate
+                      {u.settledCount} settled bet{u.settledCount !== 1 ? 's' : ''} · {u.unitsStaked.toFixed(2)}u staked
                       {u.pending > 0 && ` · ${u.pending} pending`}
                     </p>
                   </div>
