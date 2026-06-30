@@ -39,6 +39,33 @@ export const updateDisplayName = async (userId, name) => {
   if (error) throw error;
 };
 
+// ── FOLLOWS ──────────────────────────────────────────
+
+export const getFollowing = async (userId) => {
+  const { data, error } = await supabase
+    .from("follows")
+    .select("following_id")
+    .eq("follower_id", userId);
+  if (error) throw error;
+  return data.map((r) => r.following_id);
+};
+
+export const followUser = async (followerId, followingId) => {
+  const { error } = await supabase
+    .from("follows")
+    .insert({ follower_id: followerId, following_id: followingId });
+  if (error) throw error;
+};
+
+export const unfollowUser = async (followerId, followingId) => {
+  const { error } = await supabase
+    .from("follows")
+    .delete()
+    .eq("follower_id", followerId)
+    .eq("following_id", followingId);
+  if (error) throw error;
+};
+
 // ── SETTINGS ─────────────────────────────────────────
 
 export const getUnitSize = async () => {
