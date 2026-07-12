@@ -9,63 +9,90 @@ import Leaderboard from './pages/Leaderboard'
 import Settings from './pages/Settings'
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: '📊' },
-  { to: '/events', label: 'Events', icon: '🥊' },
-  { to: '/bets', label: 'Bets', icon: '💰' },
-  { to: '/bankroll', label: 'Bankroll', icon: '📈' },
-  { to: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
-  { to: '/settings', label: 'Settings', icon: '⚙️' },
+  { to: '/', label: 'Dashboard' },
+  { to: '/events', label: 'Events' },
+  { to: '/bets', label: 'Bets' },
+  { to: '/bankroll', label: 'Bankroll' },
+  { to: '/leaderboard', label: 'Leaderboard' },
+  { to: '/settings', label: 'Settings' },
 ]
 
+function Sidebar() {
+  const { user, signOut } = useAuth()
+  return (
+    <aside style={{
+      width: '200px',
+      background: '#0d0d0d',
+      borderRight: '1px solid #1a1a1a',
+      display: 'flex',
+      flexDirection: 'column',
+      padding: '28px 12px',
+      flexShrink: 0,
+      minHeight: '100vh',
+    }}>
+      <div style={{ padding: '0 12px', marginBottom: '36px' }}>
+        <div style={{ fontSize: '14px', fontWeight: '600', color: '#c8c8c8', letterSpacing: '-0.3px' }}>MMA Bets</div>
+        <div style={{ fontSize: '11px', color: '#444', marginTop: '2px' }}>tracker</div>
+      </div>
+
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+        {navItems.map(({ to, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/'}
+            style={({ isActive }) => ({
+              display: 'block',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              fontSize: '13px',
+              textDecoration: 'none',
+              color: isActive ? '#c8c8c8' : '#666',
+              background: isActive ? '#161616' : 'transparent',
+              borderLeft: isActive ? '2px solid #c53030' : '2px solid transparent',
+              transition: 'all 0.15s',
+            })}
+          >
+            {label}
+          </NavLink>
+        ))}
+      </nav>
+
+      <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: '16px', marginTop: '16px' }}>
+        <div style={{ fontSize: '11px', color: '#555', padding: '0 12px', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {user?.email}
+        </div>
+        <button
+          onClick={signOut}
+          style={{ width: '100%', textAlign: 'left', padding: '8px 12px', borderRadius: '6px', fontSize: '13px', color: '#666', background: 'transparent', border: 'none', cursor: 'pointer' }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#c8c8c8'; e.currentTarget.style.background = '#161616' }}
+          onMouseLeave={e => { e.currentTarget.style.color = '#666'; e.currentTarget.style.background = 'transparent' }}
+        >
+          Sign out
+        </button>
+      </div>
+    </aside>
+  )
+}
+
 function AppShell() {
-  const { session, user, signOut, loading } = useAuth()
+  const { session, loading } = useAuth()
 
   if (loading) {
-    return <div className="min-h-screen bg-gray-950 flex items-center justify-center text-gray-400">Loading...</div>
+    return (
+      <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontSize: '13px', color: '#555' }}>Loading...</div>
+      </div>
+    )
   }
 
-  if (!session) {
-    return <Login />
-  }
+  if (!session) return <Login />
 
   return (
     <BrowserRouter>
-      <div className="flex min-h-screen bg-gray-950 text-white">
-        <aside className="w-56 bg-gray-900 border-r border-gray-800 flex flex-col p-4 gap-1">
-          <div className="text-lg font-bold text-white mb-6 px-2">
-            🥋 MMA Bets
-          </div>
-          {navItems.map(({ to, label, icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  isActive
-                    ? 'bg-red-600 text-white font-medium'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                }`
-              }
-            >
-              <span>{icon}</span>
-              {label}
-            </NavLink>
-          ))}
-
-          <div className="mt-auto pt-4 border-t border-gray-800">
-            <p className="text-xs text-gray-500 px-2 mb-2 truncate">{user?.email}</p>
-            <button
-              onClick={signOut}
-              className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-            >
-              <span>🚪</span>
-              Sign out
-            </button>
-          </div>
-        </aside>
-
-        <main className="flex-1 p-8 overflow-y-auto">
+      <div style={{ display: 'flex', minHeight: '100vh', background: '#0a0a0a' }}>
+        <Sidebar />
+        <main style={{ flex: 1, padding: '48px 56px', overflowY: 'auto' }}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/events" element={<Events />} />

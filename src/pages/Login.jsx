@@ -30,58 +30,56 @@ export default function Login() {
     }
   }
 
+  const inputStyle = {
+    width: '100%',
+    background: '#0d0d0d',
+    border: '1px solid #1a1a1a',
+    borderRadius: '6px',
+    padding: '10px 12px',
+    fontSize: '13px',
+    color: '#e0e0e0',
+    outline: 'none',
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white px-4">
-      <div className="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-xl p-8">
-        <div className="text-center mb-6">
-          <div className="text-2xl font-bold mb-1">🥋 MMA Bets</div>
-          <p className="text-gray-500 text-sm">{mode === 'signin' ? 'Sign in to your account' : 'Create an account'}</p>
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ width: '100%', maxWidth: '340px' }}>
+        <div style={{ marginBottom: '36px' }}>
+          <div style={{ fontSize: '16px', fontWeight: '600', color: '#e0e0e0', letterSpacing: '-0.3px', marginBottom: '4px' }}>MMA Bets</div>
+          <div style={{ fontSize: '12px', color: '#2e2e2e' }}>{mode === 'signin' ? 'Sign in to continue' : 'Create your account'}</div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"
-            />
+            <label style={{ fontSize: '11px', color: '#333', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required style={inputStyle} />
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"
-            />
+            <label style={{ fontSize: '11px', color: '#333', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Password</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} style={inputStyle} />
           </div>
 
-          {error && <p className="text-red-400 text-xs">{error}</p>}
-          {message && <p className="text-green-400 text-xs">{message}</p>}
+          {error && <div style={{ fontSize: '12px', color: '#f87171' }}>{error}</div>}
+          {message && <div style={{ fontSize: '12px', color: '#4ade80' }}>{message}</div>}
 
           <button
             type="submit"
             disabled={loading}
-            className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+            style={{ width: '100%', background: '#e0e0e0', color: '#0a0a0a', border: 'none', borderRadius: '6px', padding: '10px', fontSize: '13px', fontWeight: '500', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1, marginTop: '4px' }}
           >
             {loading ? 'Loading...' : mode === 'signin' ? 'Sign in' : 'Sign up'}
           </button>
         </form>
 
-        <p className="text-center text-gray-500 text-sm mt-6">
-          {mode === 'signin' ? "Don't have an account?" : 'Already have an account?'}{' '}
+        <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '12px', color: '#2a2a2a' }}>
+          {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
           <button
             onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setMessage('') }}
-            className="text-red-400 hover:text-red-300 font-medium"
+            style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '12px', textDecoration: 'underline' }}
           >
             {mode === 'signin' ? 'Sign up' : 'Sign in'}
           </button>
-        </p>
+        </div>
       </div>
     </div>
   )

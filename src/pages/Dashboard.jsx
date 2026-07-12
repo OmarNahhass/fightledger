@@ -3,11 +3,11 @@ import { getBetStats, getUnitSize } from '../lib/db'
 import { useAuth } from '../lib/AuthContext'
 import ProfitChart from '../components/ProfitChart'
 
-const StatCard = ({ label, value, sub, color = 'text-white' }) => (
-  <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-    <p className="text-gray-400 text-sm mb-1">{label}</p>
-    <p className={`text-3xl font-bold ${color}`}>{value}</p>
-    {sub && <p className="text-gray-500 text-xs mt-1">{sub}</p>}
+const StatCard = ({ label, value, sub, color = '#e0e0e0' }) => (
+  <div style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: '10px', padding: '20px 22px' }}>
+    <div style={{ fontSize: '11px', color: '#333', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>{label}</div>
+    <div style={{ fontSize: '26px', fontWeight: '500', color, letterSpacing: '-0.5px', lineHeight: 1 }}>{value}</div>
+    {sub && <div style={{ fontSize: '11px', color: '#2e2e2e', marginTop: '6px' }}>{sub}</div>}
   </div>
 )
 
@@ -25,51 +25,34 @@ export default function Dashboard() {
       .finally(() => setLoading(false))
   }, [user])
 
-  if (loading || !stats) return <p className="text-gray-400">Loading...</p>
+  if (loading) return <div style={{ color: '#2a2a2a', fontSize: '13px' }}>Loading...</div>
 
-  const profit = Number(stats.totalUnitsProfit ?? 0)
-  const profitColor = profit > 0 ? 'text-green-400' : profit < 0 ? 'text-red-400' : 'text-white'
-  const roi = Number(stats.roi ?? 0)
+  const profit = Number(stats?.totalUnitsProfit ?? 0)
+  const roi = Number(stats?.roi ?? 0)
+  const profitColor = profit > 0 ? '#4ade80' : profit < 0 ? '#f87171' : '#e0e0e0'
+  const roiColor = roi > 0 ? '#4ade80' : roi < 0 ? '#f87171' : '#e0e0e0'
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-1">Dashboard</h1>
-      <p className="text-gray-500 text-sm mb-8">1 unit = ${unitSize.toFixed(2)}</p>
+      <div style={{ marginBottom: '36px' }}>
+        <h1 style={{ fontSize: '20px', fontWeight: '500', color: '#e0e0e0', letterSpacing: '-0.4px', marginBottom: '4px' }}>Dashboard</h1>
+        <p style={{ fontSize: '12px', color: '#2e2e2e' }}>1 unit = ${unitSize.toFixed(2)}</p>
+      </div>
 
-      {stats.totalBets === 0 ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-10 text-center">
-          <p className="text-4xl mb-3">🥊</p>
-          <p className="text-white font-medium mb-1">No bets yet</p>
-          <p className="text-gray-500 text-sm">Add an event and start tracking your bets</p>
+      {!stats || stats.totalBets === 0 ? (
+        <div style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: '10px', padding: '48px', textAlign: 'center' }}>
+          <div style={{ fontSize: '13px', color: '#333', marginBottom: '6px' }}>No bets yet</div>
+          <div style={{ fontSize: '12px', color: '#222' }}>Add an event and start tracking your bets</div>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <StatCard
-              label="Units profit"
-              value={`${profit >= 0 ? '+' : ''}${profit.toFixed(2)}u`}
-              sub={`$${(profit * unitSize).toFixed(2)}`}
-              color={profitColor}
-            />
-            <StatCard
-              label="ROI"
-              value={`${roi >= 0 ? '+' : ''}${roi}%`}
-              sub={`${stats.totalUnitsStaked}u staked`}
-              color={roi >= 0 ? 'text-green-400' : 'text-red-400'}
-            />
-            <StatCard
-              label="Total bets"
-              value={stats.totalBets}
-              sub={`${stats.pendingBets} pending`}
-            />
-            <StatCard
-              label="Avg stake"
-              value={`${stats.totalBets > 0 ? (Number(stats.totalUnitsStaked) / stats.totalBets).toFixed(2) : '0.00'}u`}
-              sub="per bet"
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '20px' }}>
+            <StatCard label="Units profit" value={`${profit >= 0 ? '+' : ''}${profit.toFixed(2)}u`} sub={`$${(profit * unitSize).toFixed(2)}`} color={profitColor} />
+            <StatCard label="ROI" value={`${roi >= 0 ? '+' : ''}${roi}%`} sub={`${stats.totalUnitsStaked}u staked`} color={roiColor} />
+            <StatCard label="Total bets" value={stats.totalBets} sub={`${stats.pendingBets} pending`} />
+            <StatCard label="Avg stake" value={`${stats.totalBets > 0 ? (Number(stats.totalUnitsStaked) / stats.totalBets).toFixed(2) : '0.00'}u`} sub="per bet" />
           </div>
-
-          <ProfitChart userId={user.id} />
+          <ProfitChart userId={user?.id} />
         </>
       )}
     </div>
