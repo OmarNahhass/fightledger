@@ -42,7 +42,6 @@ export default function Bets() {
   const [unitSize, setUnitSize] = useState(10)
   const [loading, setLoading] = useState(true)
 
-  // Step: null | 'pick-event' | 'fill-form'
   const [step, setStep] = useState(null)
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [addingEvent, setAddingEvent] = useState(null)
@@ -53,7 +52,6 @@ export default function Bets() {
   const [saving, setSaving] = useState(false)
   const [settling, setSettling] = useState(null)
 
-  const [filterEvent, setFilterEvent] = useState('all')
   const [filterResult, setFilterResult] = useState('all')
   const [filterType, setFilterType] = useState('all')
 
@@ -77,11 +75,9 @@ export default function Bets() {
       }
       setSelectedEvent(event)
 
-      // Load fights for this event
       setFetchingFights(true)
       let eventFights = await getFightsByEvent(event.id)
 
-      // If no fights yet, try fetching from API
       if (!eventFights.length) {
         try {
           const apiFights = await getFightsByDate(event.event_date)
@@ -163,20 +159,25 @@ export default function Bets() {
   }
 
   const potentialUnits = calcPayoutUnits(form.stake_units, form.odds)
-  const eventOptions = useMemo(() => Array.from(new Set(bets.map(b => b.event_name).filter(Boolean))), [bets])
 
   const filteredBets = useMemo(() => bets.filter(b => {
-    if (filterEvent !== 'all' && b.event_name !== filterEvent) return false
     if (filterResult !== 'all' && b.result !== filterResult) return false
     if (filterType !== 'all' && b.bet_type !== filterType) return false
     return true
-  }), [bets, filterEvent, filterResult, filterType])
+  }), [bets, filterResult, filterType])
 
-  const pendingBets = filteredBets.filter(b => b.result === 'pending')
-  const settledBets = filteredBets.filter(b => b.result !== 'pending')
-  const activeFilterCount = [filterEvent, filterResult, filterType].filter(f => f !== 'all').length
+  const activeFilterCount = [filterResult, filterType].filter(f => f !== 'all').length
 
-  const filterSelectStyle = { background: '#fff', border: '1px solid #e5e5e5', borderRadius: '8px', padding: '7px 12px', fontSize: '12px', color: '#1a1a1a', cursor: 'pointer', outline: 'none' }
+  const filterSelectStyle = {
+    background: '#fff',
+    border: '1px solid #e5e5e5',
+    borderRadius: '8px',
+    padding: '7px 12px',
+    fontSize: '12px',
+    color: '#1a1a1a',
+    cursor: 'pointer',
+    outline: 'none',
+  }
 
   if (loading) return <div style={{ color: '#aaa', fontSize: '13px' }}>Loading...</div>
 
@@ -199,15 +200,14 @@ export default function Bets() {
             <button onClick={resetAll} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '13px' }}>Cancel</button>
           </div>
 
-          {/* Also show past tracked events in case they want to bet on a recent card */}
           {myEvents.length > 0 && (
-            <div style={{ marginBottom: '16px' }}>
+            <div style={{ marginBottom: '20px' }}>
               <div style={{ fontSize: '11px', color: '#aaa', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>Your tracked events</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {myEvents.map(event => (
                   <div
                     key={event.id}
-                    onClick={() => handleSelectEvent({ ...event, event_date: event.event_date })}
+                    onClick={() => handleSelectEvent({ ...event })}
                     style={{ padding: '12px 16px', background: '#fafafa', border: '1px solid #e5e5e5', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#f0f0f0'}
                     onMouseLeave={e => e.currentTarget.style.background = '#fafafa'}
@@ -225,7 +225,7 @@ export default function Bets() {
             </div>
           )}
 
-          {futureEvents.length > 0 && (
+          {futureEvents.filter(e => !myEventDates.has(e.event_date)).length > 0 && (
             <div>
               <div style={{ fontSize: '11px', color: '#aaa', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>Upcoming UFC events</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -330,10 +330,6 @@ export default function Bets() {
       {/* Filters */}
       {!step && (
         <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <select value={filterEvent} onChange={e => setFilterEvent(e.target.value)} style={filterSelectStyle}>
-            <option value="all">All events</option>
-            {eventOptions.map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
           <select value={filterResult} onChange={e => setFilterResult(e.target.value)} style={filterSelectStyle}>
             <option value="all">All results</option>
             <option value="pending">Pending</option>
@@ -346,7 +342,7 @@ export default function Bets() {
             {BET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
           {activeFilterCount > 0 && (
-            <button onClick={() => { setFilterEvent('all'); setFilterResult('all'); setFilterType('all') }}
+            <button onClick={() => { setFilterResult('all'); setFilterType('all') }}
               style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '12px' }}>
               Clear filters ({activeFilterCount})
             </button>
@@ -354,77 +350,98 @@ export default function Bets() {
         </div>
       )}
 
-      {/* Pending bets */}
-      {!step && pendingBets.length > 0 && (
-        <div style={{ marginBottom: '24px' }}>
-          <div style={{ fontSize: '11px', color: '#aaa', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>Pending ({pendingBets.length})</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {pendingBets.map(bet => (
-              <div key={bet.id} style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>{bet.pick}</span>
-                    <span style={{ fontSize: '11px', color: '#aaa', background: '#f5f5f5', padding: '2px 8px', borderRadius: '4px' }}>{bet.bet_type}</span>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#aaa' }}>
-                    {bet.event_name && `${bet.event_name} · `}
-                    {Number(bet.odds) > 0 ? '+' : ''}{bet.odds} · {bet.stake_units}u (${Number(bet.stake).toFixed(2)})
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12px', color: '#aaa', marginRight: '4px' }}>To win: +{calcPayoutUnits(bet.stake_units, bet.odds).toFixed(2)}u</span>
-                  <button onClick={() => handleSettle(bet.id, 'win', bet)} disabled={settling === bet.id}
-                    style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Win</button>
-                  <button onClick={() => handleSettle(bet.id, 'loss', bet)} disabled={settling === bet.id}
-                    style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Loss</button>
-                  <button onClick={() => handleSettle(bet.id, 'push', bet)} disabled={settling === bet.id}
-                    style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Push</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Settled bets */}
-      {!step && settledBets.length > 0 && (
+      {/* Bets grouped by event */}
+      {!step && (
         <div>
-          <div style={{ fontSize: '11px', color: '#aaa', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>Settled ({settledBets.length})</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {settledBets.map(bet => {
-              const profitUnits = bet.result === 'win' ? calcPayoutUnits(bet.stake_units, bet.odds) : bet.result === 'loss' ? -Number(bet.stake_units) : 0
-              return (
-                <div key={bet.id} style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>{bet.pick}</span>
-                      <span style={resultBadge(bet.result)}>{bet.result}</span>
-                      <span style={{ fontSize: '11px', color: '#aaa', background: '#f5f5f5', padding: '2px 8px', borderRadius: '4px' }}>{bet.bet_type}</span>
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#aaa' }}>
-                      {bet.event_name && `${bet.event_name} · `}
-                      {Number(bet.odds) > 0 ? '+' : ''}{bet.odds} · {bet.stake_units}u (${Number(bet.stake).toFixed(2)})
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '700', color: profitUnits >= 0 ? '#16a34a' : '#dc2626' }}>
-                      {profitUnits >= 0 ? '+' : ''}{profitUnits.toFixed(2)}u
-                    </div>
-                    <div style={{ fontSize: '12px', color: profitUnits >= 0 ? '#86efac' : '#fca5a5' }}>
-                      ${(profitUnits * unitSize).toFixed(2)}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+          {filteredBets.length === 0 ? (
+            <div style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', padding: '48px', textAlign: 'center' }}>
+              <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '4px' }}>{bets.length === 0 ? 'No bets yet' : 'No bets match these filters'}</div>
+              <div style={{ fontSize: '12px', color: '#ccc' }}>{bets.length === 0 ? 'Click "+ Add bet" to get started' : 'Try adjusting the filters above'}</div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {(() => {
+                const groups = {}
+                for (const bet of filteredBets) {
+                  const key = bet.event_name || 'No event'
+                  if (!groups[key]) groups[key] = { eventName: key, eventDate: bet.event_date, bets: [] }
+                  groups[key].bets.push(bet)
+                }
+                return Object.values(groups)
+                  .sort((a, b) => new Date(b.eventDate) - new Date(a.eventDate))
+                  .map(group => (
+                    <div key={group.eventName} style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', overflow: 'hidden' }}>
+                      {/* Event header */}
+                      <div style={{ padding: '14px 20px', borderBottom: '1px solid #f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: '700', color: '#1a1a1a' }}>{group.eventName}</div>
+                          {group.eventDate && (
+                            <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
+                              {new Date(group.eventDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: '#aaa' }}>
+                          <span>{group.bets.filter(b => b.result === 'win').length}W</span>
+                          <span>{group.bets.filter(b => b.result === 'loss').length}L</span>
+                          <span>{group.bets.filter(b => b.result === 'pending').length} pending</span>
+                          {(() => {
+                            const p = group.bets.reduce((sum, b) => {
+                              if (b.result === 'win') return sum + calcPayoutUnits(b.stake_units, b.odds)
+                              if (b.result === 'loss') return sum - Number(b.stake_units)
+                              return sum
+                            }, 0)
+                            return <span style={{ color: p > 0 ? '#16a34a' : p < 0 ? '#dc2626' : '#aaa', fontWeight: '600' }}>{p >= 0 ? '+' : ''}{p.toFixed(2)}u</span>
+                          })()}
+                        </div>
+                      </div>
 
-      {!step && filteredBets.length === 0 && (
-        <div style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', padding: '48px', textAlign: 'center' }}>
-          <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '4px' }}>{bets.length === 0 ? 'No bets yet' : 'No bets match these filters'}</div>
-          <div style={{ fontSize: '12px', color: '#ccc' }}>{bets.length === 0 ? 'Click "+ Add bet" to get started' : 'Try adjusting the filters above'}</div>
+                      {/* Bets in this event */}
+                      {group.bets.map((bet, i) => {
+                        const profitUnits = bet.result === 'win' ? calcPayoutUnits(bet.stake_units, bet.odds) : bet.result === 'loss' ? -Number(bet.stake_units) : 0
+                        const isLast = i === group.bets.length - 1
+                        return (
+                          <div key={bet.id} style={{ padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid #f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                                <span style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a1a' }}>{bet.pick}</span>
+                                <span style={resultBadge(bet.result)}>{bet.result}</span>
+                                <span style={{ fontSize: '11px', color: '#bbb', background: '#f9f9f9', padding: '1px 6px', borderRadius: '4px' }}>{bet.bet_type}</span>
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#bbb' }}>
+                                {Number(bet.odds) > 0 ? '+' : ''}{bet.odds} · {bet.stake_units}u (${Number(bet.stake).toFixed(2)})
+                                {bet.fighter_a && bet.fighter_b && ` · ${bet.fighter_a} vs ${bet.fighter_b}`}
+                              </div>
+                            </div>
+
+                            {bet.result === 'pending' ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '11px', color: '#bbb', marginRight: '4px' }}>+{calcPayoutUnits(bet.stake_units, bet.odds).toFixed(2)}u</span>
+                                <button onClick={() => handleSettle(bet.id, 'win', bet)} disabled={settling === bet.id}
+                                  style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Win</button>
+                                <button onClick={() => handleSettle(bet.id, 'loss', bet)} disabled={settling === bet.id}
+                                  style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Loss</button>
+                                <button onClick={() => handleSettle(bet.id, 'push', bet)} disabled={settling === bet.id}
+                                  style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Push</button>
+                              </div>
+                            ) : (
+                              <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '14px', fontWeight: '700', color: profitUnits >= 0 ? '#16a34a' : '#dc2626' }}>
+                                  {profitUnits >= 0 ? '+' : ''}{profitUnits.toFixed(2)}u
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#bbb' }}>
+                                  ${(profitUnits * unitSize).toFixed(2)}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))
+              })()}
+            </div>
+          )}
         </div>
       )}
     </div>
