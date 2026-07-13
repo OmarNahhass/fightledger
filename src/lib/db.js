@@ -262,3 +262,36 @@ export const getBetStats = async (userId = null) => {
     pendingBets: data.filter((b) => b.result === "pending").length,
   };
 };
+export const getPendingBetsWithFights = async () => {
+  const { data, error } = await supabase
+    .from("bet_summary")
+    .select("*")
+    .eq("result", "pending")
+    .not("fight_id", "is", null);
+  if (error) throw error;
+  return data;
+};
+
+export const settleBet = async (betId, result) => {
+  const { data: bet } = await supabase
+    .from("bets")
+    .select("stake_units, odds")
+    .eq("id", betId)
+    .single();
+  if (!bet) return;
+  const units = Number(bet.stake_units || 0);
+  const odds = Number(bet.odds);
+  let actual_payout = 0;
+  if (result === "win") {
+    const profit =
+      odds > 0 ? (units * odds) / 100 : (units * 100) / Math.abs(odds);
+    actual_payout = (profit + units) * 10;
+  } else if (result === "push") {
+    actual_payout = units * 10;
+  }
+  const { error } = await supabase
+    .from("bets")
+    .update({ result, actual_payout })
+    .eq("id", betId);
+  if (error) throw error;
+};
