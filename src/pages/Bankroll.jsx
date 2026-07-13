@@ -10,10 +10,7 @@ export default function Bankroll() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    getBankrollHistory()
-      .then(setSnapshots)
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    getBankrollHistory().then(setSnapshots).catch(console.error).finally(() => setLoading(false))
   }, [])
 
   const handleSubmit = async () => {
@@ -25,124 +22,88 @@ export default function Bankroll() {
       setBalance('')
       setNotes('')
       setShowForm(false)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setSaving(false)
-    }
+    } catch (err) { console.error(err) }
+    finally { setSaving(false) }
   }
 
   const latest = snapshots[snapshots.length - 1]
   const first = snapshots[0]
-  const totalChange = latest && first
-    ? Number(latest.balance) - Number(first.balance)
-    : 0
+  const totalChange = latest && first ? Number(latest.balance) - Number(first.balance) : 0
 
-  if (loading) return <p className="text-gray-400">Loading...</p>
+  const inputStyle = { width: '100%', background: '#fafafa', border: '1px solid #e5e5e5', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: '#1a1a1a', outline: 'none' }
+  const btnPrimary = { background: '#1a1a1a', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }
+  const btnGhost = { background: 'transparent', color: '#888', border: '1px solid #e5e5e5', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', cursor: 'pointer' }
+
+  if (loading) return <div style={{ color: '#aaa', fontSize: '13px' }}>Loading...</div>
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px' }}>
         <div>
-          <h1 className="text-2xl font-bold mb-1">Bankroll</h1>
-          <p className="text-gray-500 text-sm">Track your balance over time</p>
+          <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#1a1a1a', letterSpacing: '-0.4px', marginBottom: '4px' }}>Bankroll</h1>
+          <p style={{ fontSize: '13px', color: '#aaa' }}>Track your balance over time</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          + Log balance
-        </button>
+        <button style={btnPrimary} onClick={() => setShowForm(true)}>+ Log balance</button>
       </div>
 
-      {/* Summary cards */}
       {latest && (
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-            <p className="text-gray-400 text-sm mb-1">Current balance</p>
-            <p className="text-3xl font-bold text-white">${Number(latest.balance).toFixed(2)}</p>
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-            <p className="text-gray-400 text-sm mb-1">Starting balance</p>
-            <p className="text-3xl font-bold text-white">${Number(first.balance).toFixed(2)}</p>
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-            <p className="text-gray-400 text-sm mb-1">Total change</p>
-            <p className={`text-3xl font-bold ${totalChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {totalChange >= 0 ? '+' : ''}${totalChange.toFixed(2)}
-            </p>
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
+          {[
+            { label: 'Current balance', value: `$${Number(latest.balance).toFixed(2)}`, color: '#1a1a1a' },
+            { label: 'Starting balance', value: `$${Number(first.balance).toFixed(2)}`, color: '#1a1a1a' },
+            { label: 'Total change', value: `${totalChange >= 0 ? '+' : ''}$${totalChange.toFixed(2)}`, color: totalChange >= 0 ? '#16a34a' : '#dc2626' },
+          ].map(({ label, value, color }) => (
+            <div key={label} style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', padding: '20px 22px' }}>
+              <div style={{ fontSize: '11px', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px', fontWeight: '600' }}>{label}</div>
+              <div style={{ fontSize: '26px', fontWeight: '700', color, letterSpacing: '-0.5px' }}>{value}</div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Log balance form */}
       {showForm && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-          <h2 className="font-semibold mb-4">Log balance</h2>
-          <div className="grid grid-cols-2 gap-4 mb-4">
+        <div style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
+          <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', marginBottom: '20px' }}>Log balance</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Current balance ($) *</label>
-              <input
-                type="number"
-                value={balance}
-                onChange={e => setBalance(e.target.value)}
-                placeholder="e.g. 500"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
-              />
+              <label style={{ fontSize: '11px', color: '#aaa', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Balance ($) *</label>
+              <input type="number" value={balance} onChange={e => setBalance(e.target.value)} placeholder="e.g. 500" style={inputStyle} />
             </div>
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Notes</label>
-              <input
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                placeholder="Optional — e.g. after UFC 328"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
-              />
+              <label style={{ fontSize: '11px', color: '#aaa', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Notes</label>
+              <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. after UFC 329" style={inputStyle} />
             </div>
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={handleSubmit}
-              disabled={saving}
-              className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-            >
-              {saving ? 'Saving...' : 'Save'}
-            </button>
-            <button
-              onClick={() => { setShowForm(false); setBalance(''); setNotes('') }}
-              className="text-gray-400 hover:text-white text-sm px-4 py-2 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={handleSubmit} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving...' : 'Save'}</button>
+            <button onClick={() => { setShowForm(false); setBalance(''); setNotes('') }} style={btnGhost}>Cancel</button>
           </div>
         </div>
       )}
 
-      {/* History list */}
       {snapshots.length === 0 ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-10 text-center">
-          <p className="text-4xl mb-3">📈</p>
-          <p className="text-white font-medium mb-1">No balance logs yet</p>
-          <p className="text-gray-500 text-sm">Log your starting bankroll to begin tracking</p>
+        <div style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', padding: '48px', textAlign: 'center' }}>
+          <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '4px' }}>No balance logs yet</div>
+          <div style={{ fontSize: '12px', color: '#ccc' }}>Log your starting bankroll to begin tracking</div>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {[...snapshots].reverse().map((snap, i) => {
             const prev = snapshots[snapshots.length - 2 - i]
             const change = prev ? Number(snap.balance) - Number(prev.balance) : null
             return (
-              <div key={snap.id} className="bg-gray-900 border border-gray-800 rounded-xl px-6 py-4 flex items-center justify-between">
+              <div key={snap.id} style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <p className="font-semibold text-white">${Number(snap.balance).toFixed(2)}</p>
-                  <p className="text-gray-500 text-sm">
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', marginBottom: '2px' }}>${Number(snap.balance).toFixed(2)}</div>
+                  <div style={{ fontSize: '12px', color: '#aaa' }}>
                     {new Date(snap.snapshot_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     {snap.notes && ` · ${snap.notes}`}
-                  </p>
+                  </div>
                 </div>
                 {change !== null && (
-                  <p className={`text-sm font-bold ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <div style={{ fontSize: '14px', fontWeight: '700', color: change >= 0 ? '#16a34a' : '#dc2626' }}>
                     {change >= 0 ? '+' : ''}${change.toFixed(2)}
-                  </p>
+                  </div>
                 )}
               </div>
             )

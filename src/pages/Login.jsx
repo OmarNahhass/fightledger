@@ -32,50 +32,54 @@ export default function Login() {
 
   const inputStyle = {
     width: '100%',
-    background: '#0d0d0d',
-    border: '1px solid #1a1a1a',
-    borderRadius: '6px',
+    background: '#fff',
+    border: '1px solid #e5e5e5',
+    borderRadius: '8px',
     padding: '10px 12px',
-    fontSize: '13px',
-    color: '#e0e0e0',
+    fontSize: '14px',
+    color: '#1a1a1a',
     outline: 'none',
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <div style={{ width: '100%', maxWidth: '340px' }}>
-        <div style={{ marginBottom: '36px' }}>
-          <div style={{ fontSize: '16px', fontWeight: '600', color: '#e0e0e0', letterSpacing: '-0.3px', marginBottom: '4px' }}>MMA Bets</div>
-          <div style={{ fontSize: '12px', color: '#2e2e2e' }}>{mode === 'signin' ? 'Sign in to continue' : 'Create your account'}</div>
+    <div style={{ minHeight: '100vh', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ width: '100%', maxWidth: '360px', background: '#fff', border: '1px solid #ebebeb', borderRadius: '16px', padding: '40px' }}>
+        <div style={{ marginBottom: '32px' }}>
+          <div style={{ fontSize: '20px', fontWeight: '700', color: '#1a1a1a', marginBottom: '4px', letterSpacing: '-0.3px' }}>MMA Bets</div>
+          <div style={{ fontSize: '13px', color: '#aaa' }}>{mode === 'signin' ? 'Sign in to continue' : 'Create your account'}</div>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
-            <label style={{ fontSize: '11px', color: '#333', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required style={inputStyle} />
+            <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px', fontWeight: '500' }}>Email</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required style={inputStyle}
+              onFocus={e => e.target.style.borderColor = '#1a1a1a'}
+              onBlur={e => e.target.style.borderColor = '#e5e5e5'} />
           </div>
           <div>
-            <label style={{ fontSize: '11px', color: '#333', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} style={inputStyle} />
+            <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px', fontWeight: '500' }}>Password</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} style={inputStyle}
+              onFocus={e => e.target.style.borderColor = '#1a1a1a'}
+              onBlur={e => e.target.style.borderColor = '#e5e5e5'} />
           </div>
 
-          {error && <div style={{ fontSize: '12px', color: '#f87171' }}>{error}</div>}
-          {message && <div style={{ fontSize: '12px', color: '#4ade80' }}>{message}</div>}
+          {error && <div style={{ fontSize: '12px', color: '#e53e3e', background: '#fff5f5', padding: '8px 12px', borderRadius: '6px' }}>{error}</div>}
+          {message && <div style={{ fontSize: '12px', color: '#38a169', background: '#f0fff4', padding: '8px 12px', borderRadius: '6px' }}>{message}</div>}
 
           <button
             type="submit"
             disabled={loading}
-            style={{ width: '100%', background: '#e0e0e0', color: '#0a0a0a', border: 'none', borderRadius: '6px', padding: '10px', fontSize: '13px', fontWeight: '500', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1, marginTop: '4px' }}
+            style={{ width: '100%', background: '#1a1a1a', color: '#fff', border: 'none', borderRadius: '8px', padding: '11px', fontSize: '14px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, marginTop: '4px' }}
           >
             {loading ? 'Loading...' : mode === 'signin' ? 'Sign in' : 'Sign up'}
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '12px', color: '#2a2a2a' }}>
+        <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '13px', color: '#aaa' }}>
           {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
           <button
             onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setMessage('') }}
-            style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '12px', textDecoration: 'underline' }}
+            style={{ background: 'none', border: 'none', color: '#1a1a1a', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
           >
             {mode === 'signin' ? 'Sign up' : 'Sign in'}
           </button>

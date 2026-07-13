@@ -3,11 +3,12 @@ import { getBets, getFollowing, followUser, unfollowUser } from '../lib/db'
 import { calcProfitUnits } from '../lib/calc'
 import { useAuth } from '../lib/AuthContext'
 
-const resultColor = (result) => {
-  if (result === 'win') return 'text-green-400 bg-green-400/10'
-  if (result === 'loss') return 'text-red-400 bg-red-400/10'
-  if (result === 'push') return 'text-yellow-400 bg-yellow-400/10'
-  return 'text-gray-400 bg-gray-400/10'
+const resultBadge = (result) => {
+  const base = { padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }
+  if (result === 'win') return { ...base, color: '#16a34a', background: '#f0fdf4' }
+  if (result === 'loss') return { ...base, color: '#dc2626', background: '#fef2f2' }
+  if (result === 'push') return { ...base, color: '#d97706', background: '#fffbeb' }
+  return { ...base, color: '#888', background: '#f5f5f5' }
 }
 
 export default function Leaderboard() {
@@ -16,7 +17,7 @@ export default function Leaderboard() {
   const [followingIds, setFollowingIds] = useState([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(null)
-  const [view, setView] = useState('all') // 'all' | 'following'
+  const [view, setView] = useState('all')
   const [followBusy, setFollowBusy] = useState(null)
 
   useEffect(() => {
@@ -37,135 +38,100 @@ export default function Leaderboard() {
         await followUser(user.id, targetId)
         setFollowingIds(prev => [...prev, targetId])
       }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setFollowBusy(null)
-    }
+    } catch (err) { console.error(err) }
+    finally { setFollowBusy(null) }
   }
 
   const leaderboard = useMemo(() => {
     const byUser = {}
     for (const b of bets) {
       const key = b.user_id
-      if (!byUser[key]) {
-        byUser[key] = {
-          userId: key,
-          name: b.display_name || 'Anonymous bettor',
-          bets: [],
-          settledCount: 0,
-          pending: 0,
-          unitsStaked: 0,
-          unitsProfit: 0,
-        }
-      }
+      if (!byUser[key]) byUser[key] = { userId: key, name: b.display_name || 'Anonymous', bets: [], settledCount: 0, pending: 0, unitsStaked: 0, unitsProfit: 0 }
       const u = byUser[key]
       u.bets.push(b)
       u.unitsStaked += Number(b.stake_units || 0)
-      if (b.result === 'pending') {
-        u.pending++
-      } else {
-        u.unitsProfit += calcProfitUnits(b.stake_units, b.odds, b.result)
-        u.settledCount++
-      }
+      if (b.result === 'pending') { u.pending++ }
+      else { u.unitsProfit += calcProfitUnits(b.stake_units, b.odds, b.result); u.settledCount++ }
     }
-
     return Object.values(byUser)
-      .map(u => ({
-        ...u,
-        roi: u.unitsStaked ? (u.unitsProfit / u.unitsStaked * 100).toFixed(1) : 0,
-      }))
+      .map(u => ({ ...u, roi: u.unitsStaked ? (u.unitsProfit / u.unitsStaked * 100).toFixed(1) : 0 }))
       .sort((a, b) => b.unitsProfit - a.unitsProfit)
   }, [bets])
 
-  const filteredLeaderboard = useMemo(() => {
+  const filtered = useMemo(() => {
     if (view === 'all') return leaderboard
     return leaderboard.filter(u => u.userId === user?.id || followingIds.includes(u.userId))
   }, [leaderboard, view, followingIds, user])
 
-  if (loading) return <p className="text-gray-400">Loading...</p>
+  if (loading) return <div style={{ color: '#aaa', fontSize: '13px' }}>Loading...</div>
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-1">
-        <h1 className="text-2xl font-bold">Leaderboard</h1>
-        <div className="flex bg-gray-900 border border-gray-800 rounded-lg p-1">
-          <button
-            onClick={() => setView('all')}
-            className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${
-              view === 'all' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            Everyone
-          </button>
-          <button
-            onClick={() => setView('following')}
-            className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${
-              view === 'following' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            Following
-          </button>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px' }}>
+        <div>
+          <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#1a1a1a', letterSpacing: '-0.4px', marginBottom: '4px' }}>Leaderboard</h1>
+          <p style={{ fontSize: '13px', color: '#aaa' }}>Ranked by units profit · click to see bets</p>
+        </div>
+        <div style={{ display: 'flex', background: '#f5f5f5', borderRadius: '10px', padding: '3px', gap: '2px' }}>
+          {[['all', 'Everyone'], ['following', 'Following']].map(([key, label]) => (
+            <button key={key} onClick={() => setView(key)} style={{
+              padding: '7px 16px', borderRadius: '7px', fontSize: '12px', fontWeight: '600', border: 'none', cursor: 'pointer',
+              background: view === key ? '#fff' : 'transparent',
+              color: view === key ? '#1a1a1a' : '#aaa',
+              boxShadow: view === key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              transition: 'all 0.15s',
+            }}>
+              {label}
+            </button>
+          ))}
         </div>
       </div>
-      <p className="text-gray-500 text-sm mb-8">Ranked by units profit · click anyone to see their bets</p>
 
-      {filteredLeaderboard.length === 0 ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-10 text-center">
-          <p className="text-4xl mb-3">{view === 'following' ? '👥' : '🏆'}</p>
-          <p className="text-white font-medium mb-1">
-            {view === 'following' ? "You're not following anyone yet" : 'No bets logged yet'}
-          </p>
-          <p className="text-gray-500 text-sm">
-            {view === 'following' ? 'Switch to "Everyone" and follow some bettors' : 'Be the first to place a bet and top the board'}
-          </p>
+      {filtered.length === 0 ? (
+        <div style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', padding: '48px', textAlign: 'center' }}>
+          <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '4px' }}>{view === 'following' ? "You're not following anyone yet" : 'No bets logged yet'}</div>
+          <div style={{ fontSize: '12px', color: '#ccc' }}>{view === 'following' ? 'Switch to "Everyone" and follow some bettors' : 'Be the first to place a bet'}</div>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {filteredLeaderboard.map((u, i) => {
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {filtered.map((u, i) => {
             const isMe = u.userId === user?.id
             const isFollowing = followingIds.includes(u.userId)
+            const rankColor = i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#d97706' : '#ddd'
             return (
-              <div key={u.userId} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                <div
-                  className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-gray-800/50 transition-colors"
-                  onClick={() => setExpanded(expanded === u.userId ? null : u.userId)}
-                >
-                  <div className="flex items-center gap-4">
-                    <span className={`text-lg font-bold w-6 text-center ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-600'}`}>
-                      {i + 1}
-                    </span>
+              <div key={u.userId} style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', overflow: 'hidden' }}>
+                <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                  onClick={() => setExpanded(expanded === u.userId ? null : u.userId)}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <span style={{ fontSize: '16px', fontWeight: '700', color: rankColor, width: '20px', textAlign: 'center' }}>{i + 1}</span>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold">{u.name}</p>
-                        {isMe && <span className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full">You</span>}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>{u.name}</span>
+                        {isMe && <span style={{ fontSize: '11px', color: '#aaa', background: '#f5f5f5', padding: '1px 7px', borderRadius: '4px' }}>You</span>}
                       </div>
-                      <p className="text-gray-500 text-sm">
-                        {u.settledCount} settled bet{u.settledCount !== 1 ? 's' : ''} · {u.unitsStaked.toFixed(2)}u staked
+                      <div style={{ fontSize: '12px', color: '#aaa' }}>
+                        {u.settledCount} settled · {u.unitsStaked.toFixed(1)}u staked
                         {u.pending > 0 && ` · ${u.pending} pending`}
-                      </p>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className={`text-lg font-bold ${u.unitsProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '16px', fontWeight: '700', color: u.unitsProfit >= 0 ? '#16a34a' : '#dc2626' }}>
                         {u.unitsProfit >= 0 ? '+' : ''}{u.unitsProfit.toFixed(2)}u
-                      </p>
-                      <p className={`text-xs ${u.roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        ROI {u.roi >= 0 ? '+' : ''}{u.roi}%
-                      </p>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#aaa' }}>ROI {u.roi >= 0 ? '+' : ''}{u.roi}%</div>
                     </div>
-
                     {!isMe && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleToggleFollow(u.userId) }}
+                        onClick={e => { e.stopPropagation(); handleToggleFollow(u.userId) }}
                         disabled={followBusy === u.userId}
-                        className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 ${
-                          isFollowing
-                            ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                            : 'bg-red-600 text-white hover:bg-red-700'
-                        }`}
+                        style={{
+                          padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', border: 'none',
+                          background: isFollowing ? '#f5f5f5' : '#1a1a1a',
+                          color: isFollowing ? '#888' : '#fff',
+                          opacity: followBusy === u.userId ? 0.5 : 1,
+                        }}
                       >
                         {followBusy === u.userId ? '...' : isFollowing ? 'Following' : '+ Follow'}
                       </button>
@@ -174,26 +140,21 @@ export default function Leaderboard() {
                 </div>
 
                 {expanded === u.userId && (
-                  <div className="border-t border-gray-800 px-6 py-4 flex flex-col gap-2">
-                    {u.bets
-                      .slice()
-                      .sort((a, b) => new Date(b.event_date) - new Date(a.event_date))
-                      .map(bet => (
-                        <div key={bet.id} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
-                          <div>
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <span className="text-sm font-medium">{bet.pick}</span>
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${resultColor(bet.result)}`}>
-                                {bet.result}
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-500">
-                              {bet.event_name && `${bet.event_name} · `}
-                              {Number(bet.odds) > 0 ? '+' : ''}{bet.odds} · {bet.stake_units}u
-                            </p>
+                  <div style={{ borderTop: '1px solid #f5f5f5', padding: '12px 20px' }}>
+                    {u.bets.slice().sort((a, b) => new Date(b.event_date) - new Date(a.event_date)).map(bet => (
+                      <div key={bet.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f9f9f9' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>{bet.pick}</span>
+                            <span style={resultBadge(bet.result)}>{bet.result}</span>
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#aaa' }}>
+                            {bet.event_name && `${bet.event_name} · `}
+                            {Number(bet.odds) > 0 ? '+' : ''}{bet.odds} · {bet.stake_units}u
                           </div>
                         </div>
-                      ))}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

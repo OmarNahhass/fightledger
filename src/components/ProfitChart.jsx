@@ -34,30 +34,28 @@ export default function ProfitChart({ userId }) {
     })
   }, [bets])
 
-  if (loading) return null
-  if (chartData.length === 0) return null
+  if (loading || chartData.length === 0) return null
 
   return (
-    <div style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: '10px', padding: '24px' }}>
-      <div style={{ fontSize: '11px', color: '#333', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '20px' }}>
+    <div style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', padding: '24px' }}>
+      <div style={{ fontSize: '11px', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '20px', fontWeight: '600' }}>
         Profit over time
       </div>
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#161616" />
-          <XAxis dataKey="date" stroke="#222" fontSize={11} tick={{ fill: '#333' }} />
-          <YAxis stroke="#222" fontSize={11} tick={{ fill: '#333' }} tickFormatter={v => `${v}u`} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis dataKey="date" stroke="#ddd" fontSize={11} tick={{ fill: '#bbb' }} />
+          <YAxis stroke="#ddd" fontSize={11} tick={{ fill: '#bbb' }} tickFormatter={v => `${v}u`} />
           <Tooltip
-            contentStyle={{ background: '#111', border: '1px solid #1f1f1f', borderRadius: '6px', fontSize: '12px' }}
-            labelStyle={{ color: '#666' }}
-            itemStyle={{ color: '#888' }}
+            contentStyle={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+            labelStyle={{ color: '#888' }}
             formatter={(value, name) => [`${value}u`, name]}
           />
-          <Legend wrapperStyle={{ fontSize: '11px', color: '#333', paddingTop: '16px' }} />
-          <Line type="monotone" dataKey="straight" name="Straight" stroke="#60a5fa" strokeWidth={1.5} dot={false} />
-          <Line type="monotone" dataKey="parlay" name="Parlays" stroke="#fbbf24" strokeWidth={1.5} dot={false} />
-          <Line type="monotone" dataKey="props" name="Props" stroke="#818cf8" strokeWidth={1.5} dot={false} />
-          <Line type="monotone" dataKey="overall" name="Overall" stroke="#e0e0e0" strokeWidth={2} dot={false} />
+          <Legend wrapperStyle={{ fontSize: '11px', color: '#aaa', paddingTop: '16px' }} />
+          <Line type="monotone" dataKey="straight" name="Straight" stroke="#3b82f6" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="parlay" name="Parlays" stroke="#f59e0b" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="props" name="Props" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="overall" name="Overall" stroke="#1a1a1a" strokeWidth={2.5} dot={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>
