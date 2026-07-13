@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
-import Events from './pages/Events'
 import Bets from './pages/Bets'
 import Leaderboard from './pages/Leaderboard'
 import Settings from './pages/Settings'
@@ -12,7 +11,6 @@ const navSections = [
     label: 'MENU',
     items: [
       { to: '/', label: 'Dashboard' },
-      { to: '/events', label: 'Events' },
       { to: '/bets', label: 'Bets' },
     ]
   },
@@ -138,7 +136,6 @@ function AppShell() {
         <main style={{ flex: 1, padding: '48px 56px', overflowY: 'auto', maxWidth: '960px' }}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/events" element={<Events />} />
             <Route path="/bets" element={<Bets />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/settings" element={<Settings />} />
