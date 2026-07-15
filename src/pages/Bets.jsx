@@ -26,13 +26,13 @@ const resultBadge = (result) => {
   if (result === 'win') return { ...base, color: '#16a34a', background: '#f0fdf4' }
   if (result === 'loss') return { ...base, color: '#dc2626', background: '#fef2f2' }
   if (result === 'push') return { ...base, color: '#d97706', background: '#fffbeb' }
-  return { ...base, color: '#888', background: '#f5f5f5' }
+  return { ...base, color: 'var(--text-secondary)', background: 'var(--bg-hover)' }
 }
 
-const inputStyle = { width: '100%', background: '#fafafa', border: '1px solid #e5e5e5', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: '#1a1a1a', outline: 'none' }
+const inputStyle = { width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: 'var(--text-primary)', outline: 'none' }
 const selectStyle = { ...inputStyle, cursor: 'pointer' }
-const btnPrimary = { background: '#1a1a1a', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }
-const btnGhost = { background: 'transparent', color: '#888', border: '1px solid #e5e5e5', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', cursor: 'pointer' }
+const btnPrimary = { background: 'var(--text-primary)', color: 'var(--bg)', border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }
+const btnGhost = { background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', cursor: 'pointer' }
 
 export default function Bets() {
   const { user } = useAuth()
@@ -41,19 +41,14 @@ export default function Bets() {
   const [fights, setFights] = useState([])
   const [unitSize, setUnitSize] = useState(10)
   const [loading, setLoading] = useState(true)
-
   const [step, setStep] = useState(null)
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [addingEvent, setAddingEvent] = useState(null)
   const [fetchingFights, setFetchingFights] = useState(false)
-
   const [form, setForm] = useState(empty)
   const [customPick, setCustomPick] = useState(false)
   const [saving, setSaving] = useState(false)
   const [settling, setSettling] = useState(null)
-
-  const [filterResult, setFilterResult] = useState('all')
-  const [filterType, setFilterType] = useState('all')
 
   useEffect(() => {
     if (!user) return
@@ -74,10 +69,8 @@ export default function Bets() {
         setMyEvents(prev => [event, ...prev])
       }
       setSelectedEvent(event)
-
       setFetchingFights(true)
       let eventFights = await getFightsByEvent(event.id)
-
       if (!eventFights.length) {
         try {
           const apiFights = await getFightsByDate(event.event_date)
@@ -93,7 +86,6 @@ export default function Bets() {
           console.error('Could not auto-fetch fights:', err)
         }
       }
-
       setFights(eventFights)
       setStep('fill-form')
     } catch (err) {
@@ -160,65 +152,53 @@ export default function Bets() {
 
   const potentialUnits = calcPayoutUnits(form.stake_units, form.odds)
 
-  const filteredBets = useMemo(() => bets.filter(b => {
-    if (filterResult !== 'all' && b.result !== filterResult) return false
-    if (filterType !== 'all' && b.bet_type !== filterType) return false
-    return true
-  }), [bets, filterResult, filterType])
+  const groupedBets = useMemo(() => {
+    const groups = {}
+    for (const bet of bets) {
+      const key = bet.event_name || 'No event'
+      if (!groups[key]) groups[key] = { eventName: key, eventDate: bet.event_date, bets: [] }
+      groups[key].bets.push(bet)
+    }
+    return Object.values(groups).sort((a, b) => new Date(b.eventDate) - new Date(a.eventDate))
+  }, [bets])
 
-  const activeFilterCount = [filterResult, filterType].filter(f => f !== 'all').length
-
-  const filterSelectStyle = {
-    background: '#fff',
-    border: '1px solid #e5e5e5',
-    borderRadius: '8px',
-    padding: '7px 12px',
-    fontSize: '12px',
-    color: '#1a1a1a',
-    cursor: 'pointer',
-    outline: 'none',
-  }
-
-  if (loading) return <div style={{ color: '#aaa', fontSize: '13px' }}>Loading...</div>
+  if (loading) return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>
 
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#1a1a1a', letterSpacing: '-0.4px', marginBottom: '4px' }}>Bets</h1>
-          <p style={{ fontSize: '13px', color: '#aaa' }}>1 unit = ${unitSize.toFixed(2)}</p>
+          <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.4px', marginBottom: '4px' }}>Bets</h1>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>1 unit = ${unitSize.toFixed(2)}</p>
         </div>
         {!step && <button style={btnPrimary} onClick={() => setStep('pick-event')}>+ Add bet</button>}
       </div>
 
       {/* Step 1: Pick event */}
       {step === 'pick-event' && (
-        <div style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-            <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>Select an event</div>
-            <button onClick={resetAll} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '13px' }}>Cancel</button>
+            <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Select an event</div>
+            <button onClick={resetAll} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '13px' }}>Cancel</button>
           </div>
 
           {myEvents.length > 0 && (
             <div style={{ marginBottom: '20px' }}>
-              <div style={{ fontSize: '11px', color: '#aaa', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>Your tracked events</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>Your tracked events</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {myEvents.map(event => (
-                  <div
-                    key={event.id}
-                    onClick={() => handleSelectEvent({ ...event })}
-                    style={{ padding: '12px 16px', background: '#fafafa', border: '1px solid #e5e5e5', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#f0f0f0'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#fafafa'}
-                  >
+                  <div key={event.id} onClick={() => handleSelectEvent({ ...event })}
+                    style={{ padding: '12px 16px', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-input)'}>
                     <div>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a1a' }}>{event.name}</div>
-                      <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{event.name}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                         {new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                       </div>
                     </div>
-                    <span style={{ fontSize: '12px', color: '#aaa' }}>→</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>→</span>
                   </div>
                 ))}
               </div>
@@ -227,24 +207,21 @@ export default function Bets() {
 
           {futureEvents.filter(e => !myEventDates.has(e.event_date)).length > 0 && (
             <div>
-              <div style={{ fontSize: '11px', color: '#aaa', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>Upcoming UFC events</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>Upcoming UFC events</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {futureEvents.filter(e => !myEventDates.has(e.event_date)).map(event => (
-                  <div
-                    key={event.event_date}
-                    onClick={() => !addingEvent && handleSelectEvent(event)}
-                    style={{ padding: '12px 16px', background: '#fafafa', border: '1px solid #e5e5e5', borderRadius: '8px', cursor: addingEvent ? 'wait' : 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: addingEvent === event.event_date ? 0.5 : 1 }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#f0f0f0'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#fafafa'}
-                  >
+                  <div key={event.event_date} onClick={() => !addingEvent && handleSelectEvent(event)}
+                    style={{ padding: '12px 16px', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px', cursor: addingEvent ? 'wait' : 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: addingEvent === event.event_date ? 0.5 : 1 }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-input)'}>
                     <div>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a1a' }}>{event.name}</div>
-                      <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{event.name}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                         {new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                         {event.location !== 'TBD' && ` · ${event.location}`}
                       </div>
                     </div>
-                    <span style={{ fontSize: '12px', color: '#aaa' }}>{addingEvent === event.event_date ? '...' : '→'}</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{addingEvent === event.event_date ? '...' : '→'}</span>
                   </div>
                 ))}
               </div>
@@ -255,38 +232,38 @@ export default function Bets() {
 
       {/* Step 2: Fill bet form */}
       {step === 'fill-form' && selectedEvent && (
-        <div style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>{selectedEvent.name}</div>
-              <div style={{ fontSize: '12px', color: '#aaa', marginTop: '2px' }}>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{selectedEvent.name}</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                 {new Date(selectedEvent.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => setStep('pick-event')} style={{ ...btnGhost, fontSize: '12px', padding: '6px 12px' }}>← Change event</button>
-              <button onClick={resetAll} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '13px' }}>Cancel</button>
+              <button onClick={resetAll} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '13px' }}>Cancel</button>
             </div>
           </div>
 
-          {fetchingFights && <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '16px' }}>Loading fights...</div>}
+          {fetchingFights && <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>Loading fights...</div>}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
             <div>
-              <label style={{ fontSize: '11px', color: '#aaa', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fight</label>
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fight</label>
               <select value={form.fight_id} onChange={e => { setForm(f => ({ ...f, fight_id: e.target.value, pick: '' })); setCustomPick(false) }} style={{ ...selectStyle, opacity: fights.length ? 1 : 0.5 }}>
                 <option value="">Select fight (optional)</option>
                 {fights.map(f => <option key={f.id} value={f.id}>{f.fighter_a} vs {f.fighter_b}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: '11px', color: '#aaa', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bet type</label>
-              <select name="bet_type" value={form.bet_type} onChange={e => setForm(f => ({ ...f, bet_type: e.target.value }))} style={selectStyle}>
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bet type</label>
+              <select value={form.bet_type} onChange={e => setForm(f => ({ ...f, bet_type: e.target.value }))} style={selectStyle}>
                 {BET_TYPES.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: '11px', color: '#aaa', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pick *</label>
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pick *</label>
               {selectedFight && !customPick ? (
                 <select value={form.pick} onChange={handlePickSelect} style={selectStyle}>
                   <option value="">Select fighter</option>
@@ -296,28 +273,28 @@ export default function Bets() {
                 </select>
               ) : (
                 <div>
-                  <input name="pick" value={form.pick} onChange={e => setForm(f => ({ ...f, pick: e.target.value }))} placeholder="e.g. Islam Makhachev" style={inputStyle} />
-                  {selectedFight && <button type="button" onClick={() => setCustomPick(false)} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '11px', marginTop: '4px' }}>← Choose fighter instead</button>}
+                  <input value={form.pick} onChange={e => setForm(f => ({ ...f, pick: e.target.value }))} placeholder="e.g. Islam Makhachev" style={inputStyle} />
+                  {selectedFight && <button type="button" onClick={() => setCustomPick(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px', marginTop: '4px' }}>← Choose fighter instead</button>}
                 </div>
               )}
             </div>
             <div>
-              <label style={{ fontSize: '11px', color: '#aaa', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Odds (American) *</label>
-              <input name="odds" value={form.odds} onChange={e => setForm(f => ({ ...f, odds: e.target.value }))} placeholder="-150 or +200" style={inputStyle} />
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Odds (American) *</label>
+              <input value={form.odds} onChange={e => setForm(f => ({ ...f, odds: e.target.value }))} placeholder="-150 or +200" style={inputStyle} />
             </div>
             <div>
-              <label style={{ fontSize: '11px', color: '#aaa', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stake (units) *</label>
-              <input name="stake_units" value={form.stake_units} onChange={e => setForm(f => ({ ...f, stake_units: e.target.value }))} placeholder={`e.g. 2 = $${(2 * unitSize).toFixed(0)}`} style={inputStyle} />
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stake (units) *</label>
+              <input value={form.stake_units} onChange={e => setForm(f => ({ ...f, stake_units: e.target.value }))} placeholder={`e.g. 2 = $${(2 * unitSize).toFixed(0)}`} style={inputStyle} />
             </div>
             {form.stake_units && form.odds && (
-              <div style={{ gridColumn: '1 / -1', background: '#f9fafb', border: '1px solid #e5e5e5', borderRadius: '8px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                <span><span style={{ color: '#aaa' }}>Stake: </span><span style={{ color: '#1a1a1a', fontWeight: '600' }}>{form.stake_units}u = ${(Number(form.stake_units) * unitSize).toFixed(2)}</span></span>
-                <span><span style={{ color: '#aaa' }}>To win: </span><span style={{ color: '#16a34a', fontWeight: '600' }}>+{potentialUnits.toFixed(2)}u (${(potentialUnits * unitSize).toFixed(2)})</span></span>
+              <div style={{ gridColumn: '1 / -1', background: 'var(--bg-hover)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                <span><span style={{ color: 'var(--text-secondary)' }}>Stake: </span><span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{form.stake_units}u = ${(Number(form.stake_units) * unitSize).toFixed(2)}</span></span>
+                <span><span style={{ color: 'var(--text-secondary)' }}>To win: </span><span style={{ color: '#16a34a', fontWeight: '600' }}>+{potentialUnits.toFixed(2)}u (${(potentialUnits * unitSize).toFixed(2)})</span></span>
               </div>
             )}
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ fontSize: '11px', color: '#aaa', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Notes</label>
-              <input name="notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional — parlay legs, reasoning..." style={inputStyle} />
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Notes</label>
+              <input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional — parlay legs, reasoning..." style={inputStyle} />
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -327,119 +304,84 @@ export default function Bets() {
         </div>
       )}
 
-      {/* Filters */}
-      {!step && (
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <select value={filterResult} onChange={e => setFilterResult(e.target.value)} style={filterSelectStyle}>
-            <option value="all">All results</option>
-            <option value="pending">Pending</option>
-            <option value="win">Win</option>
-            <option value="loss">Loss</option>
-            <option value="push">Push</option>
-          </select>
-          <select value={filterType} onChange={e => setFilterType(e.target.value)} style={filterSelectStyle}>
-            <option value="all">All bet types</option>
-            {BET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-          {activeFilterCount > 0 && (
-            <button onClick={() => { setFilterResult('all'); setFilterType('all') }}
-              style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '12px' }}>
-              Clear filters ({activeFilterCount})
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Bets grouped by event */}
       {!step && (
         <div>
-          {filteredBets.length === 0 ? (
-            <div style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', padding: '48px', textAlign: 'center' }}>
-              <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '4px' }}>{bets.length === 0 ? 'No bets yet' : 'No bets match these filters'}</div>
-              <div style={{ fontSize: '12px', color: '#ccc' }}>{bets.length === 0 ? 'Click "+ Add bet" to get started' : 'Try adjusting the filters above'}</div>
+          {bets.length === 0 ? (
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '48px', textAlign: 'center' }}>
+              <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>No bets yet</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Click "+ Add bet" to get started</div>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {(() => {
-                const groups = {}
-                for (const bet of filteredBets) {
-                  const key = bet.event_name || 'No event'
-                  if (!groups[key]) groups[key] = { eventName: key, eventDate: bet.event_date, bets: [] }
-                  groups[key].bets.push(bet)
-                }
-                return Object.values(groups)
-                  .sort((a, b) => new Date(b.eventDate) - new Date(a.eventDate))
-                  .map(group => (
-                    <div key={group.eventName} style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', overflow: 'hidden' }}>
-                      {/* Event header */}
-                      <div style={{ padding: '14px 20px', borderBottom: '1px solid #f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                          <div style={{ fontSize: '13px', fontWeight: '700', color: '#1a1a1a' }}>{group.eventName}</div>
-                          {group.eventDate && (
-                            <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
-                              {new Date(group.eventDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                            </div>
-                          )}
+              {groupedBets.map(group => (
+                <div key={group.eventName} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }}>{group.eventName}</div>
+                      {group.eventDate && (
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                          {new Date(group.eventDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                         </div>
-                        <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: '#aaa' }}>
-                          <span>{group.bets.filter(b => b.result === 'win').length}W</span>
-                          <span>{group.bets.filter(b => b.result === 'loss').length}L</span>
-                          <span>{group.bets.filter(b => b.result === 'pending').length} pending</span>
-                          {(() => {
-                            const p = group.bets.reduce((sum, b) => {
-                              if (b.result === 'win') return sum + calcPayoutUnits(b.stake_units, b.odds)
-                              if (b.result === 'loss') return sum - Number(b.stake_units)
-                              return sum
-                            }, 0)
-                            return <span style={{ color: p > 0 ? '#16a34a' : p < 0 ? '#dc2626' : '#aaa', fontWeight: '600' }}>{p >= 0 ? '+' : ''}{p.toFixed(2)}u</span>
-                          })()}
-                        </div>
-                      </div>
-
-                      {/* Bets in this event */}
-                      {group.bets.map((bet, i) => {
-                        const profitUnits = bet.result === 'win' ? calcPayoutUnits(bet.stake_units, bet.odds) : bet.result === 'loss' ? -Number(bet.stake_units) : 0
-                        const isLast = i === group.bets.length - 1
-                        return (
-                          <div key={bet.id} style={{ padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid #f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                                <span style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a1a' }}>{bet.pick}</span>
-                                <span style={resultBadge(bet.result)}>{bet.result}</span>
-                                <span style={{ fontSize: '11px', color: '#bbb', background: '#f9f9f9', padding: '1px 6px', borderRadius: '4px' }}>{bet.bet_type}</span>
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#bbb' }}>
-                                {Number(bet.odds) > 0 ? '+' : ''}{bet.odds} · {bet.stake_units}u (${Number(bet.stake).toFixed(2)})
-                                {bet.fighter_a && bet.fighter_b && ` · ${bet.fighter_a} vs ${bet.fighter_b}`}
-                              </div>
-                            </div>
-
-                            {bet.result === 'pending' ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontSize: '11px', color: '#bbb', marginRight: '4px' }}>+{calcPayoutUnits(bet.stake_units, bet.odds).toFixed(2)}u</span>
-                                <button onClick={() => handleSettle(bet.id, 'win', bet)} disabled={settling === bet.id}
-                                  style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Win</button>
-                                <button onClick={() => handleSettle(bet.id, 'loss', bet)} disabled={settling === bet.id}
-                                  style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Loss</button>
-                                <button onClick={() => handleSettle(bet.id, 'push', bet)} disabled={settling === bet.id}
-                                  style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Push</button>
-                              </div>
-                            ) : (
-                              <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '14px', fontWeight: '700', color: profitUnits >= 0 ? '#16a34a' : '#dc2626' }}>
-                                  {profitUnits >= 0 ? '+' : ''}{profitUnits.toFixed(2)}u
-                                </div>
-                                <div style={{ fontSize: '11px', color: '#bbb' }}>
-                                  ${(profitUnits * unitSize).toFixed(2)}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
+                      )}
                     </div>
-                  ))
-              })()}
+                    <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      <span>{group.bets.filter(b => b.result === 'win').length}W</span>
+                      <span>{group.bets.filter(b => b.result === 'loss').length}L</span>
+                      <span>{group.bets.filter(b => b.result === 'pending').length} pending</span>
+                      {(() => {
+                        const p = group.bets.reduce((sum, b) => {
+                          if (b.result === 'win') return sum + calcPayoutUnits(b.stake_units, b.odds)
+                          if (b.result === 'loss') return sum - Number(b.stake_units)
+                          return sum
+                        }, 0)
+                        return <span style={{ color: p > 0 ? '#16a34a' : p < 0 ? '#dc2626' : 'var(--text-secondary)', fontWeight: '600' }}>{p >= 0 ? '+' : ''}{p.toFixed(2)}u</span>
+                      })()}
+                    </div>
+                  </div>
+
+                  {group.bets.map((bet, i) => {
+                    const profitUnits = bet.result === 'win' ? calcPayoutUnits(bet.stake_units, bet.odds) : bet.result === 'loss' ? -Number(bet.stake_units) : 0
+                    const isLast = i === group.bets.length - 1
+                    return (
+                      <div key={bet.id} style={{ padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{bet.pick}</span>
+                            <span style={resultBadge(bet.result)}>{bet.result}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>{bet.bet_type}</span>
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                            {Number(bet.odds) > 0 ? '+' : ''}{bet.odds} · {bet.stake_units}u (${Number(bet.stake).toFixed(2)})
+                            {bet.fighter_a && bet.fighter_b && ` · ${bet.fighter_a} vs ${bet.fighter_b}`}
+                          </div>
+                        </div>
+
+                        {bet.result === 'pending' ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginRight: '4px' }}>+{calcPayoutUnits(bet.stake_units, bet.odds).toFixed(2)}u</span>
+                            <button onClick={() => handleSettle(bet.id, 'win', bet)} disabled={settling === bet.id}
+                              style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Win</button>
+                            <button onClick={() => handleSettle(bet.id, 'loss', bet)} disabled={settling === bet.id}
+                              style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Loss</button>
+                            <button onClick={() => handleSettle(bet.id, 'push', bet)} disabled={settling === bet.id}
+                              style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Push</button>
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '14px', fontWeight: '700', color: profitUnits >= 0 ? '#16a34a' : '#dc2626' }}>
+                              {profitUnits >= 0 ? '+' : ''}{profitUnits.toFixed(2)}u
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                              ${(profitUnits * unitSize).toFixed(2)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
             </div>
           )}
         </div>

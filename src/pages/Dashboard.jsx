@@ -3,16 +3,11 @@ import { getBetStats, getUnitSize } from '../lib/db'
 import { useAuth } from '../lib/AuthContext'
 import ProfitChart from '../components/ProfitChart'
 
-const StatCard = ({ label, value, sub, color = '#1a1a1a' }) => (
-  <div style={{
-    background: '#fff',
-    border: '1px solid #ebebeb',
-    borderRadius: '12px',
-    padding: '20px 22px',
-  }}>
-    <div style={{ fontSize: '11px', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px', fontWeight: '600' }}>{label}</div>
+const StatCard = ({ label, value, sub, color = 'var(--text-primary)' }) => (
+  <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px 22px' }}>
+    <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px', fontWeight: '600' }}>{label}</div>
     <div style={{ fontSize: '26px', fontWeight: '700', color, letterSpacing: '-0.5px', lineHeight: 1 }}>{value}</div>
-    {sub && <div style={{ fontSize: '12px', color: '#bbb', marginTop: '6px' }}>{sub}</div>}
+    {sub && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>{sub}</div>}
   </div>
 )
 
@@ -30,24 +25,24 @@ export default function Dashboard() {
       .finally(() => setLoading(false))
   }, [user])
 
-  if (loading) return <div style={{ color: '#bbb', fontSize: '13px' }}>Loading...</div>
+  if (loading) return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>
 
   const profit = Number(stats?.totalUnitsProfit ?? 0)
   const roi = Number(stats?.roi ?? 0)
-  const profitColor = profit > 0 ? '#16a34a' : profit < 0 ? '#dc2626' : '#1a1a1a'
-  const roiColor = roi > 0 ? '#16a34a' : roi < 0 ? '#dc2626' : '#1a1a1a'
+  const profitColor = profit > 0 ? '#16a34a' : profit < 0 ? '#dc2626' : 'var(--text-primary)'
+  const roiColor = roi > 0 ? '#16a34a' : roi < 0 ? '#dc2626' : 'var(--text-primary)'
 
   return (
     <div>
       <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#1a1a1a', letterSpacing: '-0.4px', marginBottom: '4px' }}>Dashboard</h1>
-        <p style={{ fontSize: '13px', color: '#aaa' }}>1 unit = ${unitSize.toFixed(2)}</p>
+        <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.4px', marginBottom: '4px' }}>Dashboard</h1>
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>1 unit = ${unitSize.toFixed(2)}</p>
       </div>
 
       {!stats || stats.totalBets === 0 ? (
-        <div style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', padding: '48px', textAlign: 'center' }}>
-          <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '4px' }}>No bets yet</div>
-          <div style={{ fontSize: '12px', color: '#ccc' }}>Add an event and start tracking your bets</div>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '48px', textAlign: 'center' }}>
+          <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>No bets yet</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Add an event and start tracking your bets</div>
         </div>
       ) : (
         <>

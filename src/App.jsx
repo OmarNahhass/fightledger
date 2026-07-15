@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/AuthContext'
+import { useTheme } from './lib/ThemeContext'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Bets from './pages/Bets'
@@ -30,26 +31,36 @@ const navSections = [
 
 function Sidebar() {
   const { user, signOut } = useAuth()
+  const { theme, toggleTheme } = useTheme()
+  const isDark = theme === 'dark'
 
   return (
     <aside style={{
       width: '220px',
-      background: '#fff',
-      borderRight: '1px solid #ebebeb',
+      background: 'var(--sidebar-bg)',
+      borderRight: '1px solid var(--sidebar-border)',
       display: 'flex',
       flexDirection: 'column',
       padding: '28px 16px',
       flexShrink: 0,
       minHeight: '100vh',
+      transition: 'background 0.2s',
     }}>
-      <div style={{ padding: '0 8px', marginBottom: '32px' }}>
-        <div style={{ fontSize: '16px', fontWeight: '700', color: '#1a1a1a', letterSpacing: '-0.3px' }}>MMA Bets</div>
+      <div style={{ padding: '0 8px', marginBottom: '32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>MMA Bets</div>
+        <button
+          onClick={toggleTheme}
+          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          style={{ background: 'var(--bg-hover)', border: 'none', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)' }}
+        >
+          {isDark ? '☀' : '☾'}
+        </button>
       </div>
 
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {navSections.map(({ label, items }) => (
           <div key={label}>
-            <div style={{ fontSize: '10px', fontWeight: '600', color: '#aaa', letterSpacing: '0.8px', padding: '0 8px', marginBottom: '6px' }}>
+            <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.8px', padding: '0 8px', marginBottom: '6px' }}>
               {label}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
@@ -66,8 +77,8 @@ function Sidebar() {
                     borderRadius: '8px',
                     fontSize: '14px',
                     textDecoration: 'none',
-                    color: isActive ? '#1a1a1a' : '#888',
-                    background: isActive ? '#f0f0f0' : 'transparent',
+                    color: isActive ? 'var(--text-primary)' : 'var(--nav-inactive)',
+                    background: isActive ? 'var(--nav-active-bg)' : 'transparent',
                     fontWeight: isActive ? '600' : '400',
                     transition: 'all 0.15s',
                   })}
@@ -78,12 +89,12 @@ function Sidebar() {
                         width: '28px',
                         height: '28px',
                         borderRadius: '6px',
-                        background: isActive ? '#1a1a1a' : '#f0f0f0',
+                        background: isActive ? 'var(--nav-active-icon)' : 'var(--bg-hover)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontSize: '11px',
-                        color: isActive ? '#fff' : '#888',
+                        color: isActive ? 'var(--nav-active-icon-text)' : 'var(--text-secondary)',
                         flexShrink: 0,
                         fontWeight: '700',
                       }}>
@@ -99,15 +110,15 @@ function Sidebar() {
         ))}
       </nav>
 
-      <div style={{ borderTop: '1px solid #ebebeb', paddingTop: '16px', marginTop: '16px' }}>
-        <div style={{ fontSize: '11px', color: '#bbb', padding: '0 8px', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ borderTop: '1px solid var(--sidebar-border)', paddingTop: '16px', marginTop: '16px' }}>
+        <div style={{ fontSize: '11px', color: 'var(--text-muted)', padding: '0 8px', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {user?.email}
         </div>
         <button
           onClick={signOut}
-          style={{ width: '100%', textAlign: 'left', padding: '8px', borderRadius: '8px', fontSize: '13px', color: '#aaa', background: 'transparent', border: 'none', cursor: 'pointer' }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#f5f5f5'; e.currentTarget.style.color = '#1a1a1a' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#aaa' }}
+          style={{ width: '100%', textAlign: 'left', padding: '8px', borderRadius: '8px', fontSize: '13px', color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
         >
           Sign out
         </button>
@@ -121,8 +132,8 @@ function AppShell() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: '13px', color: '#aaa' }}>Loading...</div>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Loading...</div>
       </div>
     )
   }
@@ -131,7 +142,7 @@ function AppShell() {
 
   return (
     <BrowserRouter>
-      <div style={{ display: 'flex', minHeight: '100vh', background: '#f5f5f5' }}>
+      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
         <Sidebar />
         <main style={{ flex: 1, padding: '48px 56px', overflowY: 'auto', maxWidth: '960px' }}>
           <Routes>
