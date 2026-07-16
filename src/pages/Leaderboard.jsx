@@ -3,12 +3,37 @@ import { getBets, getFollowing, followUser, unfollowUser } from '../lib/db'
 import { calcProfitUnits } from '../lib/calc'
 import { useAuth } from '../lib/AuthContext'
 
+const PERIODS = [
+  { key: 'all', label: 'All time' },
+  { key: 'month', label: 'This month' },
+  { key: 'week', label: 'This week' },
+]
+
+const isInPeriod = (dateStr, period) => {
+  if (period === 'all') return true
+  if (!dateStr) return false
+  const date = new Date(dateStr)
+  const now = new Date()
+  if (period === 'week') {
+    const weekAgo = new Date()
+    weekAgo.setDate(now.getDate() - 7)
+    return date >= weekAgo
+  }
+  if (period === 'month') {
+    const monthAgo = new Date()
+    monthAgo.setMonth(now.getMonth() - 1)
+    return date >= monthAgo
+  }
+  return true
+}
+
 export default function Leaderboard() {
   const { user } = useAuth()
   const [bets, setBets] = useState([])
   const [followingIds, setFollowingIds] = useState([])
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState('all')
+  const [period, setPeriod] = useState('all')
   const [followBusy, setFollowBusy] = useState(null)
 
   useEffect(() => {
@@ -34,8 +59,9 @@ export default function Leaderboard() {
   }
 
   const leaderboard = useMemo(() => {
+    const periodBets = bets.filter(b => isInPeriod(b.event_date, period))
     const byUser = {}
-    for (const b of bets) {
+    for (const b of periodBets) {
       const key = b.user_id
       if (!byUser[key]) byUser[key] = {
         userId: key,
@@ -53,7 +79,7 @@ export default function Leaderboard() {
     return Object.values(byUser)
       .map(u => ({ ...u, roi: u.unitsStaked ? (u.unitsProfit / u.unitsStaked * 100).toFixed(1) : 0 }))
       .sort((a, b) => b.unitsProfit - a.unitsProfit)
-  }, [bets])
+  }, [bets, period])
 
   const filtered = useMemo(() => {
     if (view === 'all') return leaderboard
@@ -64,7 +90,7 @@ export default function Leaderboard() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.4px', marginBottom: '4px' }}>Leaderboard</h1>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Ranked by units profit</p>
@@ -85,10 +111,25 @@ export default function Leaderboard() {
         </div>
       </div>
 
+      {/* Period filter */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+        {PERIODS.map(({ key, label }) => (
+          <button key={key} onClick={() => setPeriod(key)} style={{
+            padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600',
+            border: '1px solid var(--border-input)', cursor: 'pointer',
+            background: period === key ? 'var(--text-primary)' : 'var(--bg-input)',
+            color: period === key ? 'var(--bg)' : 'var(--text-secondary)',
+            transition: 'all 0.15s',
+          }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
       {filtered.length === 0 ? (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '48px', textAlign: 'center' }}>
           <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-            {view === 'following' ? "You're not following anyone yet" : 'No bets logged yet'}
+            {view === 'following' ? "You're not following anyone yet" : `No bets logged ${period === 'week' ? 'this week' : period === 'month' ? 'this month' : 'yet'}`}
           </div>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             {view === 'following' ? 'Switch to "Everyone" and follow some bettors' : 'Be the first to place a bet'}
@@ -98,71 +139,47 @@ export default function Leaderboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {/* Header row */}
           <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 80px 80px 80px 100px', gap: '12px', padding: '0 20px', marginBottom: '4px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>#</div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bettor</div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right' }}>Bets</div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right' }}>ROI</div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right' }}>Profit</div>
-            <div></div>
+            {['#', 'Bettor', 'Bets', 'ROI', 'Profit', ''].map((h, i) => (
+              <div key={i} style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i > 1 ? 'right' : 'left' }}>{h}</div>
+            ))}
           </div>
 
           {filtered.map((u, i) => {
             const isMe = u.userId === user?.id
             const isFollowing = followingIds.includes(u.userId)
             const rankColor = i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#d97706' : 'var(--text-muted)'
-
             return (
               <div key={u.userId} style={{
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border)',
-                borderRadius: '12px',
-                padding: '14px 20px',
-                display: 'grid',
+                background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px',
+                padding: '14px 20px', display: 'grid',
                 gridTemplateColumns: '40px 1fr 80px 80px 80px 100px',
-                gap: '12px',
-                alignItems: 'center',
+                gap: '12px', alignItems: 'center',
               }}>
-                {/* Rank */}
                 <div style={{ fontSize: '15px', fontWeight: '700', color: rankColor }}>{i + 1}</div>
-
-                {/* Name */}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{u.name}</span>
                     {isMe && <span style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px', fontWeight: '600' }}>YOU</span>}
                   </div>
-                  {u.pending > 0 && (
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>{u.pending} pending</div>
-                  )}
+                  {u.pending > 0 && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>{u.pending} pending</div>}
                 </div>
-
-                {/* Bets */}
                 <div style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'right' }}>{u.settledCount}</div>
-
-                {/* ROI */}
                 <div style={{ fontSize: '13px', fontWeight: '600', color: Number(u.roi) >= 0 ? '#16a34a' : '#dc2626', textAlign: 'right' }}>
                   {Number(u.roi) >= 0 ? '+' : ''}{u.roi}%
                 </div>
-
-                {/* Profit */}
                 <div style={{ fontSize: '14px', fontWeight: '700', color: u.unitsProfit >= 0 ? '#16a34a' : '#dc2626', textAlign: 'right' }}>
                   {u.unitsProfit >= 0 ? '+' : ''}{u.unitsProfit.toFixed(2)}u
                 </div>
-
-                {/* Follow button */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   {!isMe && (
-                    <button
-                      onClick={() => handleToggleFollow(u.userId)}
-                      disabled={followBusy === u.userId}
+                    <button onClick={() => handleToggleFollow(u.userId)} disabled={followBusy === u.userId}
                       style={{
-                        padding: '5px 12px', borderRadius: '6px', fontSize: '12px',
-                        fontWeight: '600', cursor: 'pointer', border: 'none',
+                        padding: '5px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600',
+                        cursor: 'pointer', border: 'none',
                         background: isFollowing ? 'var(--bg-hover)' : 'var(--text-primary)',
                         color: isFollowing ? 'var(--text-secondary)' : 'var(--bg)',
                         opacity: followBusy === u.userId ? 0.5 : 1,
-                      }}
-                    >
+                      }}>
                       {followBusy === u.userId ? '...' : isFollowing ? 'Following' : '+ Follow'}
                     </button>
                   )}
