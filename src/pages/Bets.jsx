@@ -13,7 +13,8 @@ const UPCOMING_UFC_EVENTS = [
 ]
 
 const BET_TYPES = ['moneyline', 'parlay', 'round_prop', 'method_prop', 'over_under', 'other']
-const empty = { fight_id: '', bet_type: 'moneyline', pick: '', odds: '', stake_units: '', notes: '' }
+const SPORTSBOOKS = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'PointsBet', 'BetRivers', 'ESPN Bet', 'Other']
+const empty = { fight_id: '', bet_type: 'moneyline', pick: '', odds: '', stake_units: '', notes: '', sportsbook: '' }
 
 const calcPayoutUnits = (units, odds) => {
   const u = Number(units), o = Number(odds)
@@ -27,6 +28,85 @@ const resultBadge = (result) => {
   if (result === 'loss') return { ...base, color: '#dc2626', background: '#fef2f2' }
   if (result === 'push') return { ...base, color: '#d97706', background: '#fffbeb' }
   return { ...base, color: 'var(--text-secondary)', background: 'var(--bg-hover)' }
+}
+
+const getPropOptions = (betType, fighterA, fighterB) => {
+  const f1 = fighterA || 'Fighter A'
+  const f2 = fighterB || 'Fighter B'
+
+  if (betType === 'moneyline') return [f1, f2]
+
+  if (betType === 'method_prop') return [
+    `${f1} by KO/TKO`,
+    `${f1} by Submission`,
+    `${f1} by Decision`,
+    `${f1} by Unanimous Decision`,
+    `${f1} by Split Decision`,
+    `${f2} by KO/TKO`,
+    `${f2} by Submission`,
+    `${f2} by Decision`,
+    `${f2} by Unanimous Decision`,
+    `${f2} by Split Decision`,
+    'Goes to Decision',
+    'Does not go to Decision',
+    'Fight ends by KO/TKO',
+    'Fight ends by Submission',
+    'No Contest',
+  ]
+
+  if (betType === 'round_prop') return [
+    'Ends in Round 1',
+    'Ends in Round 2',
+    'Ends in Round 3',
+    'Ends in Round 4',
+    'Ends in Round 5',
+    'Ends in Rounds 1-2',
+    'Ends in Rounds 3-4',
+    'Ends in Rounds 1/2 (within first 2)',
+    'Ends in Rounds 3/4 (within second 2)',
+    'Fight to start Round 2',
+    'Fight to start Round 3',
+    'Fight to start Round 4',
+    'Fight to start Round 5',
+    'Fight does not start Round 2',
+    'Fight does not start Round 3',
+    `${f1} to finish in Round 1`,
+    `${f1} to finish in Round 2`,
+    `${f1} to finish in Round 3`,
+    `${f2} to finish in Round 1`,
+    `${f2} to finish in Round 2`,
+    `${f2} to finish in Round 3`,
+  ]
+
+  if (betType === 'over_under') return [
+    'Over 0.5 rounds',
+    'Under 0.5 rounds',
+    'Over 1.5 rounds',
+    'Under 1.5 rounds',
+    'Over 2.5 rounds',
+    'Under 2.5 rounds',
+    'Over 3.5 rounds',
+    'Under 3.5 rounds',
+    'Over 4.5 rounds',
+    'Under 4.5 rounds',
+  ]
+
+  if (betType === 'other') return [
+    'Fight goes the distance',
+    'Fight does not go the distance',
+    `${f1} to win by finish`,
+    `${f2} to win by finish`,
+    `${f1} wins Round 1`,
+    `${f2} wins Round 1`,
+    `${f1} knocked down`,
+    `${f2} knocked down`,
+    'At least one knockdown',
+    'Fight stopped by doctor',
+    'Technical draw',
+    'No Contest',
+  ]
+
+  return []
 }
 
 const inputStyle = { width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: 'var(--text-primary)', outline: 'none' }
@@ -128,6 +208,7 @@ export default function Bets() {
         stake_units: units,
         potential_payout: potentialUnits * unitSize + units * unitSize,
         notes: form.notes,
+        sportsbook: form.sportsbook || null,
       }
       const newBet = await createBet(bet)
       setBets(prev => [newBet, ...prev])
@@ -166,7 +247,6 @@ export default function Bets() {
 
   return (
     <div>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.4px', marginBottom: '4px' }}>Bets</h1>
@@ -258,25 +338,56 @@ export default function Bets() {
             </div>
             <div>
               <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bet type</label>
-              <select value={form.bet_type} onChange={e => setForm(f => ({ ...f, bet_type: e.target.value }))} style={selectStyle}>
+              <select value={form.bet_type} onChange={e => { setForm(f => ({ ...f, bet_type: e.target.value, pick: '' })); setCustomPick(false) }} style={selectStyle}>
                 {BET_TYPES.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
             <div>
               <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pick *</label>
-              {selectedFight && !customPick ? (
-                <select value={form.pick} onChange={handlePickSelect} style={selectStyle}>
-                  <option value="">Select fighter</option>
-                  <option value={selectedFight.fighter_a}>{selectedFight.fighter_a}</option>
-                  <option value={selectedFight.fighter_b}>{selectedFight.fighter_b}</option>
-                  <option value="__custom">Other (type manually)</option>
-                </select>
-              ) : (
-                <div>
-                  <input value={form.pick} onChange={e => setForm(f => ({ ...f, pick: e.target.value }))} placeholder="e.g. Islam Makhachev" style={inputStyle} />
-                  {selectedFight && <button type="button" onClick={() => setCustomPick(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px', marginTop: '4px' }}>← Choose fighter instead</button>}
-                </div>
-              )}
+              {(() => {
+                const propOptions = getPropOptions(form.bet_type, selectedFight?.fighter_a, selectedFight?.fighter_b)
+                const isPropType = propOptions.length > 0
+
+                if (isPropType && !customPick) {
+                  return (
+                    <div>
+                      <select value={form.pick} onChange={e => {
+                        if (e.target.value === '__custom') { setCustomPick(true); setForm(f => ({ ...f, pick: '' })) }
+                        else setForm(f => ({ ...f, pick: e.target.value }))
+                      }} style={selectStyle}>
+                        <option value="">Select pick</option>
+                        {propOptions.map(o => <option key={o}>{o}</option>)}
+                        <option value="__custom">Other (type manually)</option>
+                      </select>
+                      <button type="button" onClick={() => setCustomPick(true)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px', marginTop: '4px' }}>
+                        Type manually instead →
+                      </button>
+                    </div>
+                  )
+                }
+
+                if (selectedFight && !customPick && !isPropType) {
+                  return (
+                    <select value={form.pick} onChange={handlePickSelect} style={selectStyle}>
+                      <option value="">Select fighter</option>
+                      <option value={selectedFight.fighter_a}>{selectedFight.fighter_a}</option>
+                      <option value={selectedFight.fighter_b}>{selectedFight.fighter_b}</option>
+                      <option value="__custom">Other (type manually)</option>
+                    </select>
+                  )
+                }
+
+                return (
+                  <div>
+                    <input value={form.pick} onChange={e => setForm(f => ({ ...f, pick: e.target.value }))} placeholder="e.g. Islam Makhachev by KO" style={inputStyle} />
+                    {(selectedFight || getPropOptions(form.bet_type, null, null).length > 0) && (
+                      <button type="button" onClick={() => setCustomPick(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px', marginTop: '4px' }}>
+                        ← Choose from list instead
+                      </button>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
             <div>
               <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Odds (American) *</label>
@@ -285,6 +396,13 @@ export default function Bets() {
             <div>
               <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stake (units) *</label>
               <input value={form.stake_units} onChange={e => setForm(f => ({ ...f, stake_units: e.target.value }))} placeholder={`e.g. 2 = $${(2 * unitSize).toFixed(0)}`} style={inputStyle} />
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sportsbook</label>
+              <select value={form.sportsbook} onChange={e => setForm(f => ({ ...f, sportsbook: e.target.value }))} style={selectStyle}>
+                <option value="">Select sportsbook (optional)</option>
+                {SPORTSBOOKS.map(s => <option key={s}>{s}</option>)}
+              </select>
             </div>
             {form.stake_units && form.odds && (
               <div style={{ gridColumn: '1 / -1', background: 'var(--bg-hover)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
@@ -350,6 +468,7 @@ export default function Bets() {
                             <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{bet.pick}</span>
                             <span style={resultBadge(bet.result)}>{bet.result}</span>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>{bet.bet_type}</span>
+                            {bet.sportsbook && <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>{bet.sportsbook}</span>}
                           </div>
                           <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                             {Number(bet.odds) > 0 ? '+' : ''}{bet.odds} · {bet.stake_units}u (${Number(bet.stake).toFixed(2)})
