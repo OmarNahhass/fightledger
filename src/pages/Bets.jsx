@@ -16,11 +16,32 @@ const UPCOMING_UFC_EVENTS = [
 const BET_TYPES = ['moneyline', 'parlay', 'round_prop', 'method_prop', 'over_under', 'other']
 const SPORTSBOOKS = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'PointsBet', 'BetRivers', 'ESPN Bet', 'Other']
 const empty = { fight_id: '', bet_type: 'moneyline', pick: '', odds: '', stake_units: '', notes: '', sportsbook: '', confidence: 0 }
+const emptyLeg = { fight_id: '', pick: '', odds: '' }
 
 const calcPayoutUnits = (units, odds) => {
   const u = Number(units), o = Number(odds)
   if (!u || !o) return 0
   return o > 0 ? u * o / 100 : u * 100 / Math.abs(o)
+}
+
+// Convert American odds to decimal
+const toDecimal = (american) => {
+  const o = Number(american)
+  if (!o) return 1
+  return o > 0 ? o / 100 + 1 : 100 / Math.abs(o) + 1
+}
+
+// Convert combined decimal odds back to American
+const toAmerican = (decimal) => {
+  if (decimal >= 2) return Math.round((decimal - 1) * 100)
+  return Math.round(-100 / (decimal - 1))
+}
+
+const calcParlayOdds = (legs) => {
+  const validLegs = legs.filter(l => l.odds && l.pick)
+  if (validLegs.length < 2) return null
+  const combined = validLegs.reduce((acc, leg) => acc * toDecimal(leg.odds), 1)
+  return toAmerican(combined)
 }
 
 const resultBadge = (result) => {
@@ -34,79 +55,31 @@ const resultBadge = (result) => {
 const getPropOptions = (betType, fighterA, fighterB) => {
   const f1 = fighterA || 'Fighter A'
   const f2 = fighterB || 'Fighter B'
-
   if (betType === 'moneyline') return [f1, f2]
-
   if (betType === 'method_prop') return [
-    `${f1} by KO/TKO`,
-    `${f1} by Submission`,
-    `${f1} by Decision`,
-    `${f1} by Unanimous Decision`,
-    `${f1} by Split Decision`,
-    `${f2} by KO/TKO`,
-    `${f2} by Submission`,
-    `${f2} by Decision`,
-    `${f2} by Unanimous Decision`,
-    `${f2} by Split Decision`,
-    'Goes to Decision',
-    'Does not go to Decision',
-    'Fight ends by KO/TKO',
-    'Fight ends by Submission',
-    'No Contest',
+    `${f1} by KO/TKO`, `${f1} by Submission`, `${f1} by Decision`, `${f1} by Unanimous Decision`, `${f1} by Split Decision`,
+    `${f2} by KO/TKO`, `${f2} by Submission`, `${f2} by Decision`, `${f2} by Unanimous Decision`, `${f2} by Split Decision`,
+    'Goes to Decision', 'Does not go to Decision', 'Fight ends by KO/TKO', 'Fight ends by Submission', 'No Contest',
   ]
-
   if (betType === 'round_prop') return [
-    'Ends in Round 1',
-    'Ends in Round 2',
-    'Ends in Round 3',
-    'Ends in Round 4',
-    'Ends in Round 5',
-    'Ends in Rounds 1-2',
-    'Ends in Rounds 3-4',
-    'Ends in Rounds 1/2 (within first 2)',
-    'Ends in Rounds 3/4 (within second 2)',
-    'Fight to start Round 2',
-    'Fight to start Round 3',
-    'Fight to start Round 4',
-    'Fight to start Round 5',
-    'Fight does not start Round 2',
-    'Fight does not start Round 3',
-    `${f1} to finish in Round 1`,
-    `${f1} to finish in Round 2`,
-    `${f1} to finish in Round 3`,
-    `${f2} to finish in Round 1`,
-    `${f2} to finish in Round 2`,
-    `${f2} to finish in Round 3`,
+    'Ends in Round 1', 'Ends in Round 2', 'Ends in Round 3', 'Ends in Round 4', 'Ends in Round 5',
+    'Ends in Rounds 1-2', 'Ends in Rounds 3-4', 'Fight to start Round 2', 'Fight to start Round 3',
+    'Fight to start Round 4', 'Fight to start Round 5', 'Fight does not start Round 2', 'Fight does not start Round 3',
+    `${f1} to finish in Round 1`, `${f1} to finish in Round 2`, `${f1} to finish in Round 3`,
+    `${f2} to finish in Round 1`, `${f2} to finish in Round 2`, `${f2} to finish in Round 3`,
   ]
-
   if (betType === 'over_under') return [
-    'Over 0.5 rounds',
-    'Under 0.5 rounds',
-    'Over 1.5 rounds',
-    'Under 1.5 rounds',
-    'Over 2.5 rounds',
-    'Under 2.5 rounds',
-    'Over 3.5 rounds',
-    'Under 3.5 rounds',
-    'Over 4.5 rounds',
-    'Under 4.5 rounds',
+    'Over 0.5 rounds', 'Under 0.5 rounds', 'Over 1.5 rounds', 'Under 1.5 rounds',
+    'Over 2.5 rounds', 'Under 2.5 rounds', 'Over 3.5 rounds', 'Under 3.5 rounds',
+    'Over 4.5 rounds', 'Under 4.5 rounds',
   ]
-
   if (betType === 'other') return [
-    'Fight goes the distance',
-    'Fight does not go the distance',
-    `${f1} to win by finish`,
-    `${f2} to win by finish`,
-    `${f1} wins Round 1`,
-    `${f2} wins Round 1`,
-    `${f1} knocked down`,
-    `${f2} knocked down`,
-    'At least one knockdown',
-    'Fight stopped by doctor',
-    'Technical draw',
-    'No Contest',
+    'Fight goes the distance', 'Fight does not go the distance',
+    `${f1} to win by finish`, `${f2} to win by finish`,
+    `${f1} wins Round 1`, `${f2} wins Round 1`,
+    `${f1} knocked down`, `${f2} knocked down`,
+    'At least one knockdown', 'Fight stopped by doctor', 'Technical draw', 'No Contest',
   ]
-
   return []
 }
 
@@ -130,6 +103,9 @@ export default function Bets() {
   const [customPick, setCustomPick] = useState(false)
   const [saving, setSaving] = useState(false)
   const [settling, setSettling] = useState(null)
+
+  // Parlay legs state
+  const [parlayLegs, setParlayLegs] = useState([{ ...emptyLeg }, { ...emptyLeg }])
 
   useEffect(() => {
     if (!user) return
@@ -163,18 +139,12 @@ export default function Bets() {
             await createFight({ event_id: event.id, fighter_a: fighterA, fighter_b: fighterB, weight_class: f.category || '', rounds: 3, fight_order: i + 1, winner })
           }
           eventFights = await getFightsByEvent(event.id)
-        } catch (err) {
-          console.error('Could not auto-fetch fights:', err)
-        }
+        } catch (err) { console.error('Could not auto-fetch fights:', err) }
       }
       setFights(eventFights)
       setStep('fill-form')
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setAddingEvent(null)
-      setFetchingFights(false)
-    }
+    } catch (err) { console.error(err) }
+    finally { setAddingEvent(null); setFetchingFights(false) }
   }
 
   const selectedFight = fights.find(f => f.id === form.fight_id)
@@ -191,9 +161,56 @@ export default function Bets() {
     setFights([])
     setForm(empty)
     setCustomPick(false)
+    setParlayLegs([{ ...emptyLeg }, { ...emptyLeg }])
   }
 
+  // Parlay leg helpers
+  const updateLeg = (i, field, value) => {
+    setParlayLegs(prev => prev.map((leg, idx) => idx === i ? { ...leg, [field]: value, ...(field === 'fight_id' ? { pick: '' } : {}) } : leg))
+  }
+
+  const addLeg = () => setParlayLegs(prev => [...prev, { ...emptyLeg }])
+  const removeLeg = (i) => setParlayLegs(prev => prev.filter((_, idx) => idx !== i))
+
+  const parlayOdds = calcParlayOdds(parlayLegs)
+  const parlayPotentialUnits = parlayOdds ? calcPayoutUnits(form.stake_units, parlayOdds) : 0
+
   const handleSubmit = async () => {
+    const isParlay = form.bet_type === 'parlay'
+
+    if (isParlay) {
+      const validLegs = parlayLegs.filter(l => l.pick && l.odds)
+      if (validLegs.length < 2 || !form.stake_units) return
+      setSaving(true)
+      try {
+        const units = Number(form.stake_units)
+        const odds = parlayOdds
+        const potentialUnits = calcPayoutUnits(units, odds)
+        const legsSummary = validLegs.map((l, i) => {
+          const fight = fights.find(f => f.id === l.fight_id)
+          return `Leg ${i + 1}: ${l.pick} (${Number(l.odds) > 0 ? '+' : ''}${l.odds})${fight ? ` - ${fight.fighter_a} vs ${fight.fighter_b}` : ''}`
+        }).join(' | ')
+
+        const bet = {
+          fight_id: null,
+          bet_type: 'parlay',
+          pick: validLegs.map(l => l.pick).join(' + '),
+          odds,
+          stake: units * unitSize,
+          stake_units: units,
+          potential_payout: potentialUnits * unitSize + units * unitSize,
+          notes: legsSummary,
+          sportsbook: form.sportsbook || null,
+          confidence: form.confidence || null,
+        }
+        const newBet = await createBet(bet)
+        setBets(prev => [newBet, ...prev])
+        resetAll()
+      } catch (err) { console.error(err) }
+      finally { setSaving(false) }
+      return
+    }
+
     if (!form.pick || !form.odds || !form.stake_units) return
     setSaving(true)
     try {
@@ -246,6 +263,8 @@ export default function Bets() {
   }, [bets])
 
   if (loading) return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>
+
+  const isParlay = form.bet_type === 'parlay'
 
   return (
     <div>
@@ -340,120 +359,209 @@ export default function Bets() {
 
           {fetchingFights && <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>Loading fights...</div>}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
-            <div>
-              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fight</label>
-              <select value={form.fight_id} onChange={e => { setForm(f => ({ ...f, fight_id: e.target.value, pick: '' })); setCustomPick(false) }} style={{ ...selectStyle, opacity: fights.length ? 1 : 0.5 }}>
-                <option value="">Select fight (optional)</option>
-                {fights.map(f => <option key={f.id} value={f.id}>{f.fighter_a} vs {f.fighter_b}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bet type</label>
-              <select value={form.bet_type} onChange={e => { setForm(f => ({ ...f, bet_type: e.target.value, pick: '' })); setCustomPick(false) }} style={selectStyle}>
-                {BET_TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pick *</label>
-              {(() => {
-                const propOptions = getPropOptions(form.bet_type, selectedFight?.fighter_a, selectedFight?.fighter_b)
-                const isPropType = propOptions.length > 0
+          {/* Bet type selector */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bet type</label>
+            <select value={form.bet_type} onChange={e => { setForm(f => ({ ...f, bet_type: e.target.value, pick: '' })); setCustomPick(false) }} style={{ ...selectStyle, maxWidth: '200px' }}>
+              {BET_TYPES.map(t => <option key={t}>{t}</option>)}
+            </select>
+          </div>
 
-                if (isPropType && !customPick) {
-                  return (
-                    <div>
-                      <select value={form.pick} onChange={e => {
-                        if (e.target.value === '__custom') { setCustomPick(true); setForm(f => ({ ...f, pick: '' })) }
-                        else setForm(f => ({ ...f, pick: e.target.value }))
-                      }} style={selectStyle}>
-                        <option value="">Select pick</option>
-                        {propOptions.map(o => <option key={o}>{o}</option>)}
-                        <option value="__custom">Other (type manually)</option>
-                      </select>
-                      <button type="button" onClick={() => setCustomPick(true)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px', marginTop: '4px' }}>
-                        Type manually instead →
-                      </button>
-                    </div>
-                  )
-                }
+          {/* PARLAY BUILDER */}
+          {isParlay ? (
+            <div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px' }}>
+                Parlay legs ({parlayLegs.length})
+              </div>
 
-                if (selectedFight && !customPick && !isPropType) {
-                  return (
-                    <select value={form.pick} onChange={handlePickSelect} style={selectStyle}>
-                      <option value="">Select fighter</option>
-                      <option value={selectedFight.fighter_a}>{selectedFight.fighter_a}</option>
-                      <option value={selectedFight.fighter_b}>{selectedFight.fighter_b}</option>
-                      <option value="__custom">Other (type manually)</option>
-                    </select>
-                  )
-                }
-
+              {parlayLegs.map((leg, i) => {
+                const legFight = fights.find(f => f.id === leg.fight_id)
                 return (
-                  <div>
-                    <input value={form.pick} onChange={e => setForm(f => ({ ...f, pick: e.target.value }))} placeholder="e.g. Islam Makhachev by KO" style={inputStyle} />
-                    {(selectedFight || getPropOptions(form.bet_type, null, null).length > 0) && (
-                      <button type="button" onClick={() => setCustomPick(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px', marginTop: '4px' }}>
-                        ← Choose from list instead
-                      </button>
-                    )}
+                  <div key={i} style={{ background: 'var(--bg-hover)', borderRadius: '8px', padding: '14px', marginBottom: '8px', position: 'relative' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Leg {i + 1}</span>
+                      {parlayLegs.length > 2 && (
+                        <button onClick={() => removeLeg(i)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}>×</button>
+                      )}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px', gap: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fight</label>
+                        <select value={leg.fight_id} onChange={e => updateLeg(i, 'fight_id', e.target.value)} style={{ ...selectStyle, fontSize: '12px', padding: '7px 10px' }}>
+                          <option value="">Any fight</option>
+                          {fights.map(f => <option key={f.id} value={f.id}>{f.fighter_a} vs {f.fighter_b}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pick *</label>
+                        {legFight ? (
+                          <select value={leg.pick} onChange={e => updateLeg(i, 'pick', e.target.value)} style={{ ...selectStyle, fontSize: '12px', padding: '7px 10px' }}>
+                            <option value="">Select</option>
+                            <option value={legFight.fighter_a}>{legFight.fighter_a}</option>
+                            <option value={legFight.fighter_b}>{legFight.fighter_b}</option>
+                          </select>
+                        ) : (
+                          <input value={leg.pick} onChange={e => updateLeg(i, 'pick', e.target.value)} placeholder="e.g. Makhachev" style={{ ...inputStyle, fontSize: '12px', padding: '7px 10px' }} />
+                        )}
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Odds *</label>
+                        <input value={leg.odds} onChange={e => updateLeg(i, 'odds', e.target.value)} placeholder="-150" style={{ ...inputStyle, fontSize: '12px', padding: '7px 10px' }} />
+                      </div>
+                    </div>
                   </div>
                 )
-              })()}
-            </div>
-            <div>
-              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Odds (American) *</label>
-              <input value={form.odds} onChange={e => setForm(f => ({ ...f, odds: e.target.value }))} placeholder="-150 or +200" style={inputStyle} />
-            </div>
-            <div>
-              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stake (units) *</label>
-              <input value={form.stake_units} onChange={e => setForm(f => ({ ...f, stake_units: e.target.value }))} placeholder={`e.g. 2 = $${(2 * unitSize).toFixed(0)}`} style={inputStyle} />
-            </div>
-            <div>
-              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sportsbook</label>
-              <select value={form.sportsbook} onChange={e => setForm(f => ({ ...f, sportsbook: e.target.value }))} style={selectStyle}>
-                <option value="">Select sportsbook (optional)</option>
-                {SPORTSBOOKS.map(s => <option key={s}>{s}</option>)}
-              </select>
-            </div>
-            {form.stake_units && form.odds && (
-              <div style={{ gridColumn: '1 / -1', background: 'var(--bg-hover)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                <span><span style={{ color: 'var(--text-secondary)' }}>Stake: </span><span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{form.stake_units}u = ${(Number(form.stake_units) * unitSize).toFixed(2)}</span></span>
-                <span><span style={{ color: 'var(--text-secondary)' }}>To win: </span><span style={{ color: '#16a34a', fontWeight: '600' }}>+{potentialUnits.toFixed(2)}u (${(potentialUnits * unitSize).toFixed(2)})</span></span>
+              })}
+
+              <button onClick={addLeg} style={{ ...btnGhost, fontSize: '12px', padding: '7px 14px', marginBottom: '16px' }}>
+                + Add leg
+              </button>
+
+              {/* Parlay summary */}
+              {parlayOdds && (
+                <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '14px', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Combined odds</span>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }}>{parlayOdds > 0 ? '+' : ''}{parlayOdds}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Legs</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-primary)' }}>{parlayLegs.filter(l => l.pick && l.odds).length} picks</span>
+                  </div>
+                  {form.stake_units && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>To win</span>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: '#16a34a' }}>+{parlayPotentialUnits.toFixed(2)}u (${(parlayPotentialUnits * unitSize).toFixed(2)})</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Stake + sportsbook + confidence */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stake (units) *</label>
+                  <input value={form.stake_units} onChange={e => setForm(f => ({ ...f, stake_units: e.target.value }))} placeholder={`e.g. 1 = $${unitSize}`} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sportsbook</label>
+                  <select value={form.sportsbook} onChange={e => setForm(f => ({ ...f, sportsbook: e.target.value }))} style={selectStyle}>
+                    <option value="">Select (optional)</option>
+                    {SPORTSBOOKS.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Confidence</label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <button key={n} type="button" onClick={() => setForm(f => ({ ...f, confidence: f.confidence === n ? 0 : n }))}
+                        style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-input)', background: form.confidence >= n ? 'var(--text-primary)' : 'var(--bg-input)', color: form.confidence >= n ? 'var(--bg)' : 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s' }}>
+                        {n}
+                      </button>
+                    ))}
+                    {form.confidence > 0 && (
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
+                        {form.confidence === 1 ? 'Very low' : form.confidence === 2 ? 'Low' : form.confidence === 3 ? 'Medium' : form.confidence === 4 ? 'High' : 'Very high'}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            )}
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Confidence</label>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                {[1, 2, 3, 4, 5].map(n => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, confidence: f.confidence === n ? 0 : n }))}
-                    style={{
-                      width: '40px', height: '40px', borderRadius: '8px',
-                      border: '1px solid var(--border-input)',
-                      background: form.confidence >= n ? 'var(--text-primary)' : 'var(--bg-input)',
-                      color: form.confidence >= n ? 'var(--bg)' : 'var(--text-muted)',
-                      fontSize: '14px', cursor: 'pointer', fontWeight: '600',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {n}
-                  </button>
-                ))}
-                {form.confidence > 0 && (
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
-                    {form.confidence === 1 ? 'Very low' : form.confidence === 2 ? 'Low' : form.confidence === 3 ? 'Medium' : form.confidence === 4 ? 'High' : 'Very high'}
-                  </span>
-                )}
+            </div>
+          ) : (
+            /* STANDARD BET FORM */
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fight</label>
+                <select value={form.fight_id} onChange={e => { setForm(f => ({ ...f, fight_id: e.target.value, pick: '' })); setCustomPick(false) }} style={{ ...selectStyle, opacity: fights.length ? 1 : 0.5 }}>
+                  <option value="">Select fight (optional)</option>
+                  {fights.map(f => <option key={f.id} value={f.id}>{f.fighter_a} vs {f.fighter_b}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pick *</label>
+                {(() => {
+                  const propOptions = getPropOptions(form.bet_type, selectedFight?.fighter_a, selectedFight?.fighter_b)
+                  const isPropType = propOptions.length > 0
+                  if (isPropType && !customPick) {
+                    return (
+                      <div>
+                        <select value={form.pick} onChange={e => {
+                          if (e.target.value === '__custom') { setCustomPick(true); setForm(f => ({ ...f, pick: '' })) }
+                          else setForm(f => ({ ...f, pick: e.target.value }))
+                        }} style={selectStyle}>
+                          <option value="">Select pick</option>
+                          {propOptions.map(o => <option key={o}>{o}</option>)}
+                          <option value="__custom">Other (type manually)</option>
+                        </select>
+                        <button type="button" onClick={() => setCustomPick(true)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px', marginTop: '4px' }}>Type manually →</button>
+                      </div>
+                    )
+                  }
+                  if (selectedFight && !customPick && !isPropType) {
+                    return (
+                      <select value={form.pick} onChange={handlePickSelect} style={selectStyle}>
+                        <option value="">Select fighter</option>
+                        <option value={selectedFight.fighter_a}>{selectedFight.fighter_a}</option>
+                        <option value={selectedFight.fighter_b}>{selectedFight.fighter_b}</option>
+                        <option value="__custom">Other (type manually)</option>
+                      </select>
+                    )
+                  }
+                  return (
+                    <div>
+                      <input value={form.pick} onChange={e => setForm(f => ({ ...f, pick: e.target.value }))} placeholder="e.g. Islam Makhachev" style={inputStyle} />
+                      {(selectedFight || getPropOptions(form.bet_type, null, null).length > 0) && (
+                        <button type="button" onClick={() => setCustomPick(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px', marginTop: '4px' }}>← Choose from list</button>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Odds (American) *</label>
+                <input value={form.odds} onChange={e => setForm(f => ({ ...f, odds: e.target.value }))} placeholder="-150 or +200" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stake (units) *</label>
+                <input value={form.stake_units} onChange={e => setForm(f => ({ ...f, stake_units: e.target.value }))} placeholder={`e.g. 2 = $${(2 * unitSize).toFixed(0)}`} style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sportsbook</label>
+                <select value={form.sportsbook} onChange={e => setForm(f => ({ ...f, sportsbook: e.target.value }))} style={selectStyle}>
+                  <option value="">Select (optional)</option>
+                  {SPORTSBOOKS.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              {form.stake_units && form.odds && (
+                <div style={{ gridColumn: '1 / -1', background: 'var(--bg-hover)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <span><span style={{ color: 'var(--text-secondary)' }}>Stake: </span><span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{form.stake_units}u = ${(Number(form.stake_units) * unitSize).toFixed(2)}</span></span>
+                  <span><span style={{ color: 'var(--text-secondary)' }}>To win: </span><span style={{ color: '#16a34a', fontWeight: '600' }}>+{potentialUnits.toFixed(2)}u (${(potentialUnits * unitSize).toFixed(2)})</span></span>
+                </div>
+              )}
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Confidence</label>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button key={n} type="button" onClick={() => setForm(f => ({ ...f, confidence: f.confidence === n ? 0 : n }))}
+                      style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-input)', background: form.confidence >= n ? 'var(--text-primary)' : 'var(--bg-input)', color: form.confidence >= n ? 'var(--bg)' : 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s' }}>
+                      {n}
+                    </button>
+                  ))}
+                  {form.confidence > 0 && (
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
+                      {form.confidence === 1 ? 'Very low' : form.confidence === 2 ? 'Low' : form.confidence === 3 ? 'Medium' : form.confidence === 4 ? 'High' : 'Very high'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Notes</label>
+                <input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional — reasoning..." style={inputStyle} />
               </div>
             </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Notes</label>
-              <input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional — parlay legs, reasoning..." style={inputStyle} />
-            </div>
-          </div>
+          )}
+
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={handleSubmit} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving...' : 'Save bet'}</button>
             <button onClick={resetAll} style={btnGhost}>Cancel</button>
@@ -514,6 +622,9 @@ export default function Bets() {
                             {Number(bet.odds) > 0 ? '+' : ''}{bet.odds} · {bet.stake_units}u (${Number(bet.stake).toFixed(2)})
                             {bet.fighter_a && bet.fighter_b && ` · ${bet.fighter_a} vs ${bet.fighter_b}`}
                           </div>
+                          {bet.bet_type === 'parlay' && bet.notes && (
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px', maxWidth: '400px' }}>{bet.notes}</div>
+                          )}
                         </div>
 
                         {bet.result === 'pending' ? (
