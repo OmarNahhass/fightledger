@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Bets from './pages/Bets'
 import Leaderboard from './pages/Leaderboard'
+import Activity from './pages/Activity'
 import Settings from './pages/Settings'
 
 const navSections = [
@@ -19,6 +20,7 @@ const navSections = [
     label: 'SOCIAL',
     items: [
       { to: '/leaderboard', label: 'Leaderboard' },
+      { to: '/activity', label: 'Activity' },
     ]
   },
   {
@@ -149,6 +151,7 @@ function AppShell() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/bets" element={<Bets />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/activity" element={<Activity />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>
