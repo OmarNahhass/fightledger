@@ -21,6 +21,16 @@ export const ensureProfile = async (userId, defaultName) => {
   }
 };
 
+export const getProfile = async (userId) => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+};
+
 export const getDisplayName = async (userId) => {
   const { data, error } = await supabase
     .from("profiles")
@@ -39,31 +49,28 @@ export const updateDisplayName = async (userId, name) => {
   if (error) throw error;
 };
 
-// ── FOLLOWS ──────────────────────────────────────────
-
-export const getFollowing = async (userId) => {
-  const { data, error } = await supabase
-    .from("follows")
-    .select("following_id")
-    .eq("follower_id", userId);
-  if (error) throw error;
-  return data.map((r) => r.following_id);
-};
-
-export const followUser = async (followerId, followingId) => {
+export const updateProfile = async (
+  userId,
+  { display_name, bio, avatar_url },
+) => {
   const { error } = await supabase
-    .from("follows")
-    .insert({ follower_id: followerId, following_id: followingId });
+    .from("profiles")
+    .upsert(
+      { id: userId, display_name, bio, avatar_url },
+      { onConflict: "id" },
+    );
   if (error) throw error;
 };
 
-export const unfollowUser = async (followerId, followingId) => {
-  const { error } = await supabase
-    .from("follows")
-    .delete()
-    .eq("follower_id", followerId)
-    .eq("following_id", followingId);
+export const uploadAvatar = async (userId, file) => {
+  const ext = file.name.split(".").pop();
+  const path = `${userId}/avatar.${ext}`;
+  const { error } = await supabase.storage
+    .from("avatars")
+    .upload(path, file, { upsert: true });
   if (error) throw error;
+  const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+  return data.publicUrl;
 };
 
 // ── SETTINGS ─────────────────────────────────────────
@@ -159,8 +166,6 @@ export const updateFightResult = async (
 };
 
 // ── BETS ────────────────────────────────────────────
-// Pass a userId to get just that person's bets (personal pages).
-// Pass nothing to get everyone's bets (leaderboard).
 
 export const getBets = async (userId = null) => {
   let query = supabase
@@ -195,6 +200,16 @@ export const updateBetResult = async (betId, { result, actual_payout }) => {
   return data;
 };
 
+export const getPendingBetsWithFights = async () => {
+  const { data, error } = await supabase
+    .from("bet_summary")
+    .select("*")
+    .eq("result", "pending")
+    .not("fight_id", "is", null);
+  if (error) throw error;
+  return data;
+};
+
 // ── BANKROLL ─────────────────────────────────────────
 
 export const getBankrollHistory = async () => {
@@ -218,7 +233,6 @@ export const addBankrollSnapshot = async (balance, notes = "") => {
 };
 
 // ── STATS ────────────────────────────────────────────
-// Pass a userId for personal stats (Dashboard). Omit for everyone.
 
 export const getBetStats = async (userId = null) => {
   let query = supabase
@@ -262,36 +276,30 @@ export const getBetStats = async (userId = null) => {
     pendingBets: data.filter((b) => b.result === "pending").length,
   };
 };
-export const getPendingBetsWithFights = async () => {
+
+// ── FOLLOWS ──────────────────────────────────────────
+
+export const getFollowing = async (userId) => {
   const { data, error } = await supabase
-    .from("bet_summary")
-    .select("*")
-    .eq("result", "pending")
-    .not("fight_id", "is", null);
+    .from("follows")
+    .select("following_id")
+    .eq("follower_id", userId);
   if (error) throw error;
-  return data;
+  return data.map((r) => r.following_id);
 };
 
-export const settleBet = async (betId, result) => {
-  const { data: bet } = await supabase
-    .from("bets")
-    .select("stake_units, odds")
-    .eq("id", betId)
-    .single();
-  if (!bet) return;
-  const units = Number(bet.stake_units || 0);
-  const odds = Number(bet.odds);
-  let actual_payout = 0;
-  if (result === "win") {
-    const profit =
-      odds > 0 ? (units * odds) / 100 : (units * 100) / Math.abs(odds);
-    actual_payout = (profit + units) * 10;
-  } else if (result === "push") {
-    actual_payout = units * 10;
-  }
+export const followUser = async (followerId, followingId) => {
   const { error } = await supabase
-    .from("bets")
-    .update({ result, actual_payout })
-    .eq("id", betId);
+    .from("follows")
+    .insert({ follower_id: followerId, following_id: followingId });
+  if (error) throw error;
+};
+
+export const unfollowUser = async (followerId, followingId) => {
+  const { error } = await supabase
+    .from("follows")
+    .delete()
+    .eq("follower_id", followerId)
+    .eq("following_id", followingId);
   if (error) throw error;
 };

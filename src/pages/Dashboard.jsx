@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getBetStats, getUnitSize, getBets } from '../lib/db'
 import { useAuth } from '../lib/AuthContext'
 import ProfitChart from '../components/ProfitChart'
+import ROIBreakdown from '../components/ROIBreakdown'
 
 const calcPayoutUnits = (units, odds) => {
   const u = Number(units), o = Number(odds)
@@ -57,7 +58,6 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          {/* Stat cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
             <StatCard label="Units profit" value={`${profit >= 0 ? '+' : ''}${profit.toFixed(2)}u`} sub={`$${(profit * unitSize).toFixed(2)}`} color={profitColor} />
             <StatCard label="ROI" value={`${roi >= 0 ? '+' : ''}${roi}%`} sub={`${stats.totalUnitsStaked}u staked`} color={roiColor} />
@@ -65,10 +65,8 @@ export default function Dashboard() {
             <StatCard label="Avg stake" value={`${stats.totalBets > 0 ? (Number(stats.totalUnitsStaked) / stats.totalBets).toFixed(2) : '0.00'}u`} sub="per bet" />
           </div>
 
-          {/* Profit chart */}
           <ProfitChart userId={user?.id} />
 
-          {/* Pending bets summary */}
           {pendingBets.length > 0 && (
             <div style={{ marginTop: '20px' }}>
               <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
@@ -108,6 +106,8 @@ export default function Dashboard() {
               </div>
             </div>
           )}
+
+          <ROIBreakdown userId={user?.id} />
         </>
       )}
     </div>
