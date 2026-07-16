@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { getBets, getEvents, createEvent, getFightsByEvent, createFight, createBet, updateBetResult, getUnitSize } from '../lib/db'
 import { useAuth } from '../lib/AuthContext'
 import { getFightsByDate } from '../lib/mmaApi'
+import { exportBetsToCSV } from '../lib/exportCSV'
 
 const UPCOMING_UFC_EVENTS = [
   { name: 'UFC Fight Night: Du Plessis vs Usman', promotion: 'UFC', event_date: '2026-07-18', location: 'TBD', status: 'upcoming' },
@@ -14,7 +15,7 @@ const UPCOMING_UFC_EVENTS = [
 
 const BET_TYPES = ['moneyline', 'parlay', 'round_prop', 'method_prop', 'over_under', 'other']
 const SPORTSBOOKS = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'PointsBet', 'BetRivers', 'ESPN Bet', 'Other']
-const empty = { fight_id: '', bet_type: 'moneyline', pick: '', odds: '', stake_units: '', notes: '', sportsbook: '' }
+const empty = { fight_id: '', bet_type: 'moneyline', pick: '', odds: '', stake_units: '', notes: '', sportsbook: '', confidence: 0 }
 
 const calcPayoutUnits = (units, odds) => {
   const u = Number(units), o = Number(odds)
@@ -209,6 +210,7 @@ export default function Bets() {
         potential_payout: potentialUnits * unitSize + units * unitSize,
         notes: form.notes,
         sportsbook: form.sportsbook || null,
+        confidence: form.confidence || null,
       }
       const newBet = await createBet(bet)
       setBets(prev => [newBet, ...prev])
@@ -247,12 +249,22 @@ export default function Bets() {
 
   return (
     <div>
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.4px', marginBottom: '4px' }}>Bets</h1>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>1 unit = ${unitSize.toFixed(2)}</p>
         </div>
-        {!step && <button style={btnPrimary} onClick={() => setStep('pick-event')}>+ Add bet</button>}
+        {!step && (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {bets.length > 0 && (
+              <button onClick={() => exportBetsToCSV(bets)} style={{ ...btnGhost, fontSize: '12px', padding: '7px 14px' }}>
+                Export CSV
+              </button>
+            )}
+            <button style={btnPrimary} onClick={() => setStep('pick-event')}>+ Add bet</button>
+          </div>
+        )}
       </div>
 
       {/* Step 1: Pick event */}
@@ -411,6 +423,33 @@ export default function Bets() {
               </div>
             )}
             <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Confidence</label>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {[1, 2, 3, 4, 5].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, confidence: f.confidence === n ? 0 : n }))}
+                    style={{
+                      width: '40px', height: '40px', borderRadius: '8px',
+                      border: '1px solid var(--border-input)',
+                      background: form.confidence >= n ? 'var(--text-primary)' : 'var(--bg-input)',
+                      color: form.confidence >= n ? 'var(--bg)' : 'var(--text-muted)',
+                      fontSize: '14px', cursor: 'pointer', fontWeight: '600',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {n}
+                  </button>
+                ))}
+                {form.confidence > 0 && (
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
+                    {form.confidence === 1 ? 'Very low' : form.confidence === 2 ? 'Low' : form.confidence === 3 ? 'Medium' : form.confidence === 4 ? 'High' : 'Very high'}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Notes</label>
               <input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional — parlay legs, reasoning..." style={inputStyle} />
             </div>
@@ -469,6 +508,7 @@ export default function Bets() {
                             <span style={resultBadge(bet.result)}>{bet.result}</span>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>{bet.bet_type}</span>
                             {bet.sportsbook && <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>{bet.sportsbook}</span>}
+                            {bet.confidence && <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>{'★'.repeat(bet.confidence)}</span>}
                           </div>
                           <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                             {Number(bet.odds) > 0 ? '+' : ''}{bet.odds} · {bet.stake_units}u (${Number(bet.stake).toFixed(2)})
