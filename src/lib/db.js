@@ -200,6 +200,11 @@ export const updateBetResult = async (betId, { result, actual_payout }) => {
   return data;
 };
 
+export const deleteBet = async (betId) => {
+  const { error } = await supabase.from("bets").delete().eq("id", betId);
+  if (error) throw error;
+};
+
 export const getPendingBetsWithFights = async () => {
   const { data, error } = await supabase
     .from("bet_summary")

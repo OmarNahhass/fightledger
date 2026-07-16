@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { getBets, getEvents, createEvent, getFightsByEvent, createFight, createBet, updateBetResult, getUnitSize } from '../lib/db'
+import { getBets, getEvents, createEvent, getFightsByEvent, createFight, createBet, updateBetResult, deleteBet, getUnitSize } from '../lib/db'
 import { useAuth } from '../lib/AuthContext'
 import { getFightsByDate } from '../lib/mmaApi'
 import { exportBetsToCSV } from '../lib/exportCSV'
@@ -137,6 +137,7 @@ export default function Bets() {
   const [customPick, setCustomPick] = useState(false)
   const [saving, setSaving] = useState(false)
   const [settling, setSettling] = useState(null)
+  const [deleting, setDeleting] = useState(null)
   const [parlayLegs, setParlayLegs] = useState([{ ...emptyLeg }, { ...emptyLeg }])
 
   useEffect(() => {
@@ -208,7 +209,6 @@ export default function Bets() {
 
   const handleSubmit = async () => {
     const isParlay = form.bet_type === 'parlay'
-
     if (isParlay) {
       const validLegs = parlayLegs.filter(l => l.pick && l.odds)
       if (validLegs.length < 2 || !form.stake_units) return
@@ -278,6 +278,16 @@ export default function Bets() {
       setBets(prev => prev.map(b => b.id === betId ? { ...b, result, actual_payout } : b))
     } catch (err) { console.error(err) }
     finally { setSettling(null) }
+  }
+
+  const handleDelete = async (betId) => {
+    if (!window.confirm('Delete this bet? This cannot be undone.')) return
+    setDeleting(betId)
+    try {
+      await deleteBet(betId)
+      setBets(prev => prev.filter(b => b.id !== betId))
+    } catch (err) { console.error(err) }
+    finally { setDeleting(null) }
   }
 
   const potentialUnits = calcPayoutUnits(form.stake_units, form.odds)
@@ -388,7 +398,7 @@ export default function Bets() {
 
           {fetchingFights && <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>Loading fights...</div>}
 
-          {/* Bet type */}
+          {/* Bet type toggle */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bet type</label>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -680,6 +690,12 @@ export default function Bets() {
                               style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Loss</button>
                             <button onClick={() => handleSettle(bet.id, 'push', bet)} disabled={settling === bet.id}
                               style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Push</button>
+                            <button onClick={() => handleDelete(bet.id)} disabled={deleting === bet.id}
+                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '14px', padding: '5px', marginLeft: '2px' }}
+                              onMouseEnter={e => e.currentTarget.style.color = '#dc2626'}
+                              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
+                              ✕
+                            </button>
                           </div>
                         ) : (
                           <div style={{ textAlign: 'right' }}>
