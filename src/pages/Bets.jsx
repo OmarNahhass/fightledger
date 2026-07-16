@@ -13,7 +13,7 @@ const UPCOMING_UFC_EVENTS = [
   { name: 'UFC Fight Night: TBD', promotion: 'UFC', event_date: '2026-09-05', location: 'TBD', status: 'upcoming' },
 ]
 
-const BET_TYPES = ['moneyline', 'parlay', 'round_prop', 'method_prop', 'over_under', 'other']
+const BET_TYPES = ['moneyline', 'parlay', 'props']
 const SPORTSBOOKS = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'PointsBet', 'BetRivers', 'ESPN Bet', 'Other']
 const empty = { fight_id: '', bet_type: 'moneyline', pick: '', odds: '', stake_units: '', notes: '', sportsbook: '', confidence: 0 }
 const emptyLeg = { fight_id: '', pick: '', odds: '' }
@@ -24,14 +24,12 @@ const calcPayoutUnits = (units, odds) => {
   return o > 0 ? u * o / 100 : u * 100 / Math.abs(o)
 }
 
-// Convert American odds to decimal
 const toDecimal = (american) => {
   const o = Number(american)
   if (!o) return 1
   return o > 0 ? o / 100 + 1 : 100 / Math.abs(o) + 1
 }
 
-// Convert combined decimal odds back to American
 const toAmerican = (decimal) => {
   if (decimal >= 2) return Math.round((decimal - 1) * 100)
   return Math.round(-100 / (decimal - 1))
@@ -55,31 +53,67 @@ const resultBadge = (result) => {
 const getPropOptions = (betType, fighterA, fighterB) => {
   const f1 = fighterA || 'Fighter A'
   const f2 = fighterB || 'Fighter B'
+
   if (betType === 'moneyline') return [f1, f2]
-  if (betType === 'method_prop') return [
-    `${f1} by KO/TKO`, `${f1} by Submission`, `${f1} by Decision`, `${f1} by Unanimous Decision`, `${f1} by Split Decision`,
-    `${f2} by KO/TKO`, `${f2} by Submission`, `${f2} by Decision`, `${f2} by Unanimous Decision`, `${f2} by Split Decision`,
-    'Goes to Decision', 'Does not go to Decision', 'Fight ends by KO/TKO', 'Fight ends by Submission', 'No Contest',
+
+  if (betType === 'props') return [
+    `${f1} by KO/TKO`,
+    `${f1} by Submission`,
+    `${f1} by Decision`,
+    `${f1} by Unanimous Decision`,
+    `${f1} by Split Decision`,
+    `${f2} by KO/TKO`,
+    `${f2} by Submission`,
+    `${f2} by Decision`,
+    `${f2} by Unanimous Decision`,
+    `${f2} by Split Decision`,
+    'Fight ends by KO/TKO',
+    'Fight ends by Submission',
+    'Goes to Decision',
+    'Does not go to Decision',
+    'No Contest',
+    'Ends in Round 1',
+    'Ends in Round 2',
+    'Ends in Round 3',
+    'Ends in Round 4',
+    'Ends in Round 5',
+    'Ends in Rounds 1-2',
+    'Ends in Rounds 3-4',
+    'Fight to start Round 2',
+    'Fight to start Round 3',
+    'Fight to start Round 4',
+    'Fight to start Round 5',
+    'Fight does not start Round 2',
+    'Fight does not start Round 3',
+    `${f1} to finish in Round 1`,
+    `${f1} to finish in Round 2`,
+    `${f1} to finish in Round 3`,
+    `${f2} to finish in Round 1`,
+    `${f2} to finish in Round 2`,
+    `${f2} to finish in Round 3`,
+    'Over 0.5 rounds',
+    'Under 0.5 rounds',
+    'Over 1.5 rounds',
+    'Under 1.5 rounds',
+    'Over 2.5 rounds',
+    'Under 2.5 rounds',
+    'Over 3.5 rounds',
+    'Under 3.5 rounds',
+    'Over 4.5 rounds',
+    'Under 4.5 rounds',
+    'Fight goes the distance',
+    'Fight does not go the distance',
+    `${f1} to win by finish`,
+    `${f2} to win by finish`,
+    `${f1} wins Round 1`,
+    `${f2} wins Round 1`,
+    `${f1} knocked down`,
+    `${f2} knocked down`,
+    'At least one knockdown',
+    'Fight stopped by doctor',
+    'Technical draw',
   ]
-  if (betType === 'round_prop') return [
-    'Ends in Round 1', 'Ends in Round 2', 'Ends in Round 3', 'Ends in Round 4', 'Ends in Round 5',
-    'Ends in Rounds 1-2', 'Ends in Rounds 3-4', 'Fight to start Round 2', 'Fight to start Round 3',
-    'Fight to start Round 4', 'Fight to start Round 5', 'Fight does not start Round 2', 'Fight does not start Round 3',
-    `${f1} to finish in Round 1`, `${f1} to finish in Round 2`, `${f1} to finish in Round 3`,
-    `${f2} to finish in Round 1`, `${f2} to finish in Round 2`, `${f2} to finish in Round 3`,
-  ]
-  if (betType === 'over_under') return [
-    'Over 0.5 rounds', 'Under 0.5 rounds', 'Over 1.5 rounds', 'Under 1.5 rounds',
-    'Over 2.5 rounds', 'Under 2.5 rounds', 'Over 3.5 rounds', 'Under 3.5 rounds',
-    'Over 4.5 rounds', 'Under 4.5 rounds',
-  ]
-  if (betType === 'other') return [
-    'Fight goes the distance', 'Fight does not go the distance',
-    `${f1} to win by finish`, `${f2} to win by finish`,
-    `${f1} wins Round 1`, `${f2} wins Round 1`,
-    `${f1} knocked down`, `${f2} knocked down`,
-    'At least one knockdown', 'Fight stopped by doctor', 'Technical draw', 'No Contest',
-  ]
+
   return []
 }
 
@@ -103,8 +137,6 @@ export default function Bets() {
   const [customPick, setCustomPick] = useState(false)
   const [saving, setSaving] = useState(false)
   const [settling, setSettling] = useState(null)
-
-  // Parlay legs state
   const [parlayLegs, setParlayLegs] = useState([{ ...emptyLeg }, { ...emptyLeg }])
 
   useEffect(() => {
@@ -164,7 +196,6 @@ export default function Bets() {
     setParlayLegs([{ ...emptyLeg }, { ...emptyLeg }])
   }
 
-  // Parlay leg helpers
   const updateLeg = (i, field, value) => {
     setParlayLegs(prev => prev.map((leg, idx) => idx === i ? { ...leg, [field]: value, ...(field === 'fight_id' ? { pick: '' } : {}) } : leg))
   }
@@ -190,7 +221,6 @@ export default function Bets() {
           const fight = fights.find(f => f.id === l.fight_id)
           return `Leg ${i + 1}: ${l.pick} (${Number(l.odds) > 0 ? '+' : ''}${l.odds})${fight ? ` - ${fight.fighter_a} vs ${fight.fighter_b}` : ''}`
         }).join(' | ')
-
         const bet = {
           fight_id: null,
           bet_type: 'parlay',
@@ -268,7 +298,6 @@ export default function Bets() {
 
   return (
     <div>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.4px', marginBottom: '4px' }}>Bets</h1>
@@ -359,12 +388,24 @@ export default function Bets() {
 
           {fetchingFights && <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>Loading fights...</div>}
 
-          {/* Bet type selector */}
+          {/* Bet type */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bet type</label>
-            <select value={form.bet_type} onChange={e => { setForm(f => ({ ...f, bet_type: e.target.value, pick: '' })); setCustomPick(false) }} style={{ ...selectStyle, maxWidth: '200px' }}>
-              {BET_TYPES.map(t => <option key={t}>{t}</option>)}
-            </select>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {BET_TYPES.map(t => (
+                <button key={t} type="button"
+                  onClick={() => { setForm(f => ({ ...f, bet_type: t, pick: '' })); setCustomPick(false) }}
+                  style={{
+                    padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+                    border: '1px solid var(--border-input)', cursor: 'pointer',
+                    background: form.bet_type === t ? 'var(--text-primary)' : 'var(--bg-input)',
+                    color: form.bet_type === t ? 'var(--bg)' : 'var(--text-secondary)',
+                    transition: 'all 0.15s',
+                  }}>
+                  {t === 'moneyline' ? 'Moneyline' : t === 'parlay' ? 'Parlay' : 'Props'}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* PARLAY BUILDER */}
@@ -377,7 +418,7 @@ export default function Bets() {
               {parlayLegs.map((leg, i) => {
                 const legFight = fights.find(f => f.id === leg.fight_id)
                 return (
-                  <div key={i} style={{ background: 'var(--bg-hover)', borderRadius: '8px', padding: '14px', marginBottom: '8px', position: 'relative' }}>
+                  <div key={i} style={{ background: 'var(--bg-hover)', borderRadius: '8px', padding: '14px', marginBottom: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                       <span style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Leg {i + 1}</span>
                       {parlayLegs.length > 2 && (
@@ -399,6 +440,11 @@ export default function Bets() {
                             <option value="">Select</option>
                             <option value={legFight.fighter_a}>{legFight.fighter_a}</option>
                             <option value={legFight.fighter_b}>{legFight.fighter_b}</option>
+                            <optgroup label="Props">
+                              {getPropOptions('props', legFight.fighter_a, legFight.fighter_b).map(o => (
+                                <option key={o}>{o}</option>
+                              ))}
+                            </optgroup>
                           </select>
                         ) : (
                           <input value={leg.pick} onChange={e => updateLeg(i, 'pick', e.target.value)} placeholder="e.g. Makhachev" style={{ ...inputStyle, fontSize: '12px', padding: '7px 10px' }} />
@@ -417,7 +463,6 @@ export default function Bets() {
                 + Add leg
               </button>
 
-              {/* Parlay summary */}
               {parlayOdds && (
                 <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '14px', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -437,7 +482,6 @@ export default function Bets() {
                 </div>
               )}
 
-              {/* Stake + sportsbook + confidence */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
                 <div>
                   <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stake (units) *</label>
