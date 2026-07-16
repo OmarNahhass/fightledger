@@ -439,7 +439,7 @@ export default function Bets() {
                       <div>
                         <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fight</label>
                         <select value={leg.fight_id} onChange={e => updateLeg(i, 'fight_id', e.target.value)} style={{ ...selectStyle, fontSize: '12px', padding: '7px 10px' }}>
-                          <option value="">Any fight</option>
+                          <option value="">Select a fight</option>
                           {fights.map(f => <option key={f.id} value={f.id}>{f.fighter_a} vs {f.fighter_b}</option>)}
                         </select>
                       </div>
@@ -447,9 +447,11 @@ export default function Bets() {
                         <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pick *</label>
                         {legFight ? (
                           <select value={leg.pick} onChange={e => updateLeg(i, 'pick', e.target.value)} style={{ ...selectStyle, fontSize: '12px', padding: '7px 10px' }}>
-                            <option value="">Select</option>
-                            <option value={legFight.fighter_a}>{legFight.fighter_a}</option>
-                            <option value={legFight.fighter_b}>{legFight.fighter_b}</option>
+                            <option value="">Select pick</option>
+                            <optgroup label="Moneyline">
+                              <option value={legFight.fighter_a}>{legFight.fighter_a}</option>
+                              <option value={legFight.fighter_b}>{legFight.fighter_b}</option>
+                            </optgroup>
                             <optgroup label="Props">
                               {getPropOptions('props', legFight.fighter_a, legFight.fighter_b).map(o => (
                                 <option key={o}>{o}</option>
@@ -457,7 +459,19 @@ export default function Bets() {
                             </optgroup>
                           </select>
                         ) : (
-                          <input value={leg.pick} onChange={e => updateLeg(i, 'pick', e.target.value)} placeholder="e.g. Makhachev" style={{ ...inputStyle, fontSize: '12px', padding: '7px 10px' }} />
+                          <div>
+                            <input
+                              value={leg.pick}
+                              onChange={e => updateLeg(i, 'pick', e.target.value)}
+                              placeholder={fights.length > 0 ? 'Select a fight first' : 'Fights load closer to event day'}
+                              style={{ ...inputStyle, fontSize: '12px', padding: '7px 10px', opacity: fights.length > 0 ? 0.5 : 1 }}
+                            />
+                            {fights.length === 0 && (
+                              <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px' }}>
+                                Fight card not available yet
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                       <div>
