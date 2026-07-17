@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import { useTheme } from './lib/ThemeContext'
@@ -139,26 +140,18 @@ function Sidebar() {
   )
 }
 
-function RequireAuth({ children }) {
+function RequireAuth({ children, redirectTo = '/leaderboard' }) {
   const { isLoggedIn, loading } = useAuth()
   const navigate = useNavigate()
 
-  if (loading) return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>
+  useEffect(() => {
+    if (!loading && !isLoggedIn) {
+      navigate(redirectTo)
+    }
+  }, [loading, isLoggedIn, redirectTo])
 
-  if (!isLoggedIn) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '16px' }}>
-        <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)' }}>Sign in to continue</div>
-        <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>You need an account to access this page.</div>
-        <button
-          onClick={() => navigate('/login')}
-          style={{ background: 'var(--text-primary)', color: 'var(--bg)', border: 'none', borderRadius: '8px', padding: '10px 24px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
-        >
-          Sign in or create account
-        </button>
-      </div>
-    )
-  }
+  if (loading) return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>
+  if (!isLoggedIn) return null
 
   return children
 }
@@ -182,10 +175,10 @@ function AppShell() {
           <Routes>
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />
-            <Route path="/bets" element={<RequireAuth><Bets /></RequireAuth>} />
-            <Route path="/activity" element={<RequireAuth><Activity /></RequireAuth>} />
-            <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
+            <Route path="/" element={<RequireAuth redirectTo="/leaderboard"><Dashboard /></RequireAuth>} />
+            <Route path="/bets" element={<RequireAuth redirectTo="/leaderboard"><Bets /></RequireAuth>} />
+            <Route path="/activity" element={<RequireAuth redirectTo="/leaderboard"><Activity /></RequireAuth>} />
+            <Route path="/settings" element={<RequireAuth redirectTo="/leaderboard"><Settings /></RequireAuth>} />
           </Routes>
         </main>
       </div>
