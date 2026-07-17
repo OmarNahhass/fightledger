@@ -28,7 +28,7 @@ const isInPeriod = (dateStr, period) => {
 }
 
 export default function Leaderboard() {
-  const { user } = useAuth()
+  const { user, isLoggedIn } = useAuth()
   const [bets, setBets] = useState([])
   const [followingIds, setFollowingIds] = useState([])
   const [loading, setLoading] = useState(true)
@@ -37,14 +37,20 @@ export default function Leaderboard() {
   const [followBusy, setFollowBusy] = useState(null)
 
   useEffect(() => {
-    if (!user) return
-    Promise.all([getBets(), getFollowing(user.id)])
-      .then(([b, f]) => { setBets(b); setFollowingIds(f) })
+    getBets()
+      .then(setBets)
       .catch(console.error)
       .finally(() => setLoading(false))
+
+    if (user) {
+      getFollowing(user.id)
+        .then(setFollowingIds)
+        .catch(console.error)
+    }
   }, [user])
 
   const handleToggleFollow = async (targetId) => {
+    if (!isLoggedIn) return
     setFollowBusy(targetId)
     try {
       if (followingIds.includes(targetId)) {
@@ -82,8 +88,10 @@ export default function Leaderboard() {
   }, [bets, period])
 
   const filtered = useMemo(() => {
-    if (view === 'all') return leaderboard
-    return leaderboard.filter(u => u.userId === user?.id || followingIds.includes(u.userId))
+    if (view === 'following') {
+      return leaderboard.filter(u => u.userId === user?.id || followingIds.includes(u.userId))
+    }
+    return leaderboard
   }, [leaderboard, view, followingIds, user])
 
   if (loading) return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>
@@ -95,20 +103,22 @@ export default function Leaderboard() {
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.4px', marginBottom: '4px' }}>Leaderboard</h1>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Ranked by units profit</p>
         </div>
-        <div style={{ display: 'flex', background: 'var(--bg-hover)', borderRadius: '10px', padding: '3px', gap: '2px' }}>
-          {[['all', 'Everyone'], ['following', 'Following']].map(([key, label]) => (
-            <button key={key} onClick={() => setView(key)} style={{
-              padding: '7px 16px', borderRadius: '7px', fontSize: '12px', fontWeight: '600',
-              border: 'none', cursor: 'pointer',
-              background: view === key ? 'var(--bg-card)' : 'transparent',
-              color: view === key ? 'var(--text-primary)' : 'var(--text-muted)',
-              boxShadow: view === key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-              transition: 'all 0.15s',
-            }}>
-              {label}
-            </button>
-          ))}
-        </div>
+        {isLoggedIn && (
+          <div style={{ display: 'flex', background: 'var(--bg-hover)', borderRadius: '10px', padding: '3px', gap: '2px' }}>
+            {[['all', 'Everyone'], ['following', 'Following']].map(([key, label]) => (
+              <button key={key} onClick={() => setView(key)} style={{
+                padding: '7px 16px', borderRadius: '7px', fontSize: '12px', fontWeight: '600',
+                border: 'none', cursor: 'pointer',
+                background: view === key ? 'var(--bg-card)' : 'transparent',
+                color: view === key ? 'var(--text-primary)' : 'var(--text-muted)',
+                boxShadow: view === key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.15s',
+              }}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Period filter */}
@@ -171,7 +181,7 @@ export default function Leaderboard() {
                   {u.unitsProfit >= 0 ? '+' : ''}{u.unitsProfit.toFixed(2)}u
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  {!isMe && (
+                  {isLoggedIn && !isMe && (
                     <button onClick={() => handleToggleFollow(u.userId)} disabled={followBusy === u.userId}
                       style={{
                         padding: '5px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600',
@@ -182,6 +192,9 @@ export default function Leaderboard() {
                       }}>
                       {followBusy === u.userId ? '...' : isFollowing ? 'Following' : '+ Follow'}
                     </button>
+                  )}
+                  {!isLoggedIn && (
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Sign in to follow</span>
                   )}
                 </div>
               </div>
