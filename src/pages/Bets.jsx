@@ -80,67 +80,26 @@ const SportsbookBadge = ({ name }) => {
 const getPropOptions = (betType, fighterA, fighterB) => {
   const f1 = fighterA || 'Fighter A'
   const f2 = fighterB || 'Fighter B'
-
   if (betType === 'moneyline') return [f1, f2]
-
   if (betType === 'props') return [
-    `${f1} by KO/TKO`,
-    `${f1} by Submission`,
-    `${f1} by Decision`,
-    `${f1} by Unanimous Decision`,
-    `${f1} by Split Decision`,
-    `${f2} by KO/TKO`,
-    `${f2} by Submission`,
-    `${f2} by Decision`,
-    `${f2} by Unanimous Decision`,
-    `${f2} by Split Decision`,
-    'Fight ends by KO/TKO',
-    'Fight ends by Submission',
-    'Goes to Decision',
-    'Does not go to Decision',
-    'No Contest',
-    'Ends in Round 1',
-    'Ends in Round 2',
-    'Ends in Round 3',
-    'Ends in Round 4',
-    'Ends in Round 5',
-    'Ends in Rounds 1-2',
-    'Ends in Rounds 3-4',
-    'Fight to start Round 2',
-    'Fight to start Round 3',
-    'Fight to start Round 4',
-    'Fight to start Round 5',
-    'Fight does not start Round 2',
-    'Fight does not start Round 3',
-    `${f1} to finish in Round 1`,
-    `${f1} to finish in Round 2`,
-    `${f1} to finish in Round 3`,
-    `${f2} to finish in Round 1`,
-    `${f2} to finish in Round 2`,
-    `${f2} to finish in Round 3`,
-    'Over 0.5 rounds',
-    'Under 0.5 rounds',
-    'Over 1.5 rounds',
-    'Under 1.5 rounds',
-    'Over 2.5 rounds',
-    'Under 2.5 rounds',
-    'Over 3.5 rounds',
-    'Under 3.5 rounds',
-    'Over 4.5 rounds',
-    'Under 4.5 rounds',
-    'Fight goes the distance',
-    'Fight does not go the distance',
-    `${f1} to win by finish`,
-    `${f2} to win by finish`,
-    `${f1} wins Round 1`,
-    `${f2} wins Round 1`,
-    `${f1} knocked down`,
-    `${f2} knocked down`,
-    'At least one knockdown',
-    'Fight stopped by doctor',
-    'Technical draw',
+    `${f1} by KO/TKO`, `${f1} by Submission`, `${f1} by Decision`, `${f1} by Unanimous Decision`, `${f1} by Split Decision`,
+    `${f2} by KO/TKO`, `${f2} by Submission`, `${f2} by Decision`, `${f2} by Unanimous Decision`, `${f2} by Split Decision`,
+    'Fight ends by KO/TKO', 'Fight ends by Submission', 'Goes to Decision', 'Does not go to Decision', 'No Contest',
+    'Ends in Round 1', 'Ends in Round 2', 'Ends in Round 3', 'Ends in Round 4', 'Ends in Round 5',
+    'Ends in Rounds 1-2', 'Ends in Rounds 3-4',
+    'Fight to start Round 2', 'Fight to start Round 3', 'Fight to start Round 4', 'Fight to start Round 5',
+    'Fight does not start Round 2', 'Fight does not start Round 3',
+    `${f1} to finish in Round 1`, `${f1} to finish in Round 2`, `${f1} to finish in Round 3`,
+    `${f2} to finish in Round 1`, `${f2} to finish in Round 2`, `${f2} to finish in Round 3`,
+    'Over 0.5 rounds', 'Under 0.5 rounds', 'Over 1.5 rounds', 'Under 1.5 rounds',
+    'Over 2.5 rounds', 'Under 2.5 rounds', 'Over 3.5 rounds', 'Under 3.5 rounds',
+    'Over 4.5 rounds', 'Under 4.5 rounds',
+    'Fight goes the distance', 'Fight does not go the distance',
+    `${f1} to win by finish`, `${f2} to win by finish`,
+    `${f1} wins Round 1`, `${f2} wins Round 1`,
+    `${f1} knocked down`, `${f2} knocked down`,
+    'At least one knockdown', 'Fight stopped by doctor', 'Technical draw',
   ]
-
   return []
 }
 
@@ -148,6 +107,29 @@ const inputStyle = { width: '100%', background: 'var(--bg-input)', border: '1px 
 const selectStyle = { ...inputStyle, cursor: 'pointer' }
 const btnPrimary = { background: 'var(--text-primary)', color: 'var(--bg)', border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }
 const btnGhost = { background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', cursor: 'pointer' }
+
+const SportsbookSelect = ({ value, onChange }) => (
+  <select value={value} onChange={onChange} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: 'var(--text-primary)', outline: 'none', cursor: 'pointer' }}>
+    <option value="">Select (optional)</option>
+    {SPORTSBOOKS.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+  </select>
+)
+
+const ConfidenceSelector = ({ value, onChange }) => (
+  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+    {[1, 2, 3, 4, 5].map(n => (
+      <button key={n} type="button" onClick={() => onChange(value === n ? 0 : n)}
+        style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-input)', background: value >= n ? 'var(--text-primary)' : 'var(--bg-input)', color: value >= n ? 'var(--bg)' : 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s' }}>
+        {n}
+      </button>
+    ))}
+    {value > 0 && (
+      <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
+        {value === 1 ? 'Very low' : value === 2 ? 'Low' : value === 3 ? 'Medium' : value === 4 ? 'High' : 'Very high'}
+      </span>
+    )}
+  </div>
+)
 
 export default function Bets() {
   const { user } = useAuth()
@@ -192,6 +174,7 @@ export default function Bets() {
         try {
           const apiFights = await getFightsByDate(event.event_date)
           for (const [i, f] of apiFights.entries()) {
+            if (f.status?.short === 'CANC' || f.status?.long === 'Cancelled') continue
             const fighterA = f.fighters?.first?.name
             const fighterB = f.fighters?.second?.name
             if (!fighterA || !fighterB) continue
@@ -332,13 +315,6 @@ export default function Bets() {
   if (loading) return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>
 
   const isParlay = form.bet_type === 'parlay'
-
-  const SportsbookSelect = ({ value, onChange }) => (
-    <select value={value} onChange={onChange} style={selectStyle}>
-      <option value="">Select (optional)</option>
-      {SPORTSBOOKS.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
-    </select>
-  )
 
   return (
     <div>
@@ -494,17 +470,10 @@ export default function Bets() {
                           </select>
                         ) : (
                           <div>
-                            <input
-                              value={leg.pick}
-                              onChange={e => updateLeg(i, 'pick', e.target.value)}
+                            <input value={leg.pick} onChange={e => updateLeg(i, 'pick', e.target.value)}
                               placeholder={fights.length > 0 ? 'Select a fight first' : 'Fights load closer to event day'}
-                              style={{ ...inputStyle, fontSize: '12px', padding: '7px 10px', opacity: fights.length > 0 ? 0.5 : 1 }}
-                            />
-                            {fights.length === 0 && (
-                              <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px' }}>
-                                Fight card not available yet
-                              </div>
-                            )}
+                              style={{ ...inputStyle, fontSize: '12px', padding: '7px 10px', opacity: fights.length > 0 ? 0.5 : 1 }} />
+                            {fights.length === 0 && <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px' }}>Fight card not available yet</div>}
                           </div>
                         )}
                       </div>
@@ -517,9 +486,7 @@ export default function Bets() {
                 )
               })}
 
-              <button onClick={addLeg} style={{ ...btnGhost, fontSize: '12px', padding: '7px 14px', marginBottom: '16px' }}>
-                + Add leg
-              </button>
+              <button onClick={addLeg} style={{ ...btnGhost, fontSize: '12px', padding: '7px 14px', marginBottom: '16px' }}>+ Add leg</button>
 
               {parlayOdds && (
                 <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '14px', marginBottom: '16px' }}>
@@ -551,19 +518,7 @@ export default function Bets() {
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Confidence</label>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    {[1, 2, 3, 4, 5].map(n => (
-                      <button key={n} type="button" onClick={() => setForm(f => ({ ...f, confidence: f.confidence === n ? 0 : n }))}
-                        style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-input)', background: form.confidence >= n ? 'var(--text-primary)' : 'var(--bg-input)', color: form.confidence >= n ? 'var(--bg)' : 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s' }}>
-                        {n}
-                      </button>
-                    ))}
-                    {form.confidence > 0 && (
-                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
-                        {form.confidence === 1 ? 'Very low' : form.confidence === 2 ? 'Low' : form.confidence === 3 ? 'Medium' : form.confidence === 4 ? 'High' : 'Very high'}
-                      </span>
-                    )}
-                  </div>
+                  <ConfidenceSelector value={form.confidence} onChange={v => setForm(f => ({ ...f, confidence: v }))} />
                 </div>
               </div>
             </div>
@@ -637,19 +592,7 @@ export default function Bets() {
               )}
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Confidence</label>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  {[1, 2, 3, 4, 5].map(n => (
-                    <button key={n} type="button" onClick={() => setForm(f => ({ ...f, confidence: f.confidence === n ? 0 : n }))}
-                      style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-input)', background: form.confidence >= n ? 'var(--text-primary)' : 'var(--bg-input)', color: form.confidence >= n ? 'var(--bg)' : 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s' }}>
-                      {n}
-                    </button>
-                  ))}
-                  {form.confidence > 0 && (
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
-                      {form.confidence === 1 ? 'Very low' : form.confidence === 2 ? 'Low' : form.confidence === 3 ? 'Medium' : form.confidence === 4 ? 'High' : 'Very high'}
-                    </span>
-                  )}
-                </div>
+                <ConfidenceSelector value={form.confidence} onChange={v => setForm(f => ({ ...f, confidence: v }))} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Notes</label>
