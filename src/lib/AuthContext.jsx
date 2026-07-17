@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { ensureProfile } from './db'
+import { autoSettleBets } from './autoSettle'
 
 const AuthContext = createContext(null)
 
@@ -9,15 +10,17 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
+      setSession(data.session ?? null)
       if (data.session) {
         ensureProfile(data.session.user.id, data.session.user.email.split('@')[0]).catch(console.error)
+        autoSettleBets().catch(console.error)
       }
     })
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
+      setSession(session ?? null)
       if (session) {
         ensureProfile(session.user.id, session.user.email.split('@')[0]).catch(console.error)
+        autoSettleBets().catch(console.error)
       }
     })
     return () => listener.subscription.unsubscribe()
@@ -26,7 +29,13 @@ export function AuthProvider({ children }) {
   const signOut = () => supabase.auth.signOut()
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, signOut, loading: session === undefined }}>
+    <AuthContext.Provider value={{
+      session,
+      user: session?.user ?? null,
+      signOut,
+      loading: session === undefined,
+      isLoggedIn: !!session,
+    }}>
       {children}
     </AuthContext.Provider>
   )
