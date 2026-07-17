@@ -308,17 +308,9 @@ export const unfollowUser = async (followerId, followingId) => {
     .eq("following_id", followingId);
   if (error) throw error;
 };
-export const getActivityFeed = async (userId, followingIds) => {
-  if (!followingIds.length) return [];
-  const { data, error } = await supabase
-    .from("bet_summary")
-    .select("*")
-    .in("user_id", followingIds)
-    .order("placed_at", { ascending: false })
-    .limit(20);
-  if (error) throw error;
-  return data;
-};
+
+// ── ACTIVITY ─────────────────────────────────────────
+
 export const getActivityFeed = async (followingIds) => {
   if (!followingIds.length) return [];
   const { data, error } = await supabase

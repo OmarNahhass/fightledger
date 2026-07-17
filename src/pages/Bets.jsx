@@ -14,7 +14,21 @@ const UPCOMING_UFC_EVENTS = [
 ]
 
 const BET_TYPES = ['moneyline', 'parlay', 'props']
-const SPORTSBOOKS = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'PointsBet', 'BetRivers', 'ESPN Bet', 'Other']
+
+const SPORTSBOOKS = [
+  { name: 'DraftKings', logo: 'https://www.draftkings.com/favicon.ico' },
+  { name: 'FanDuel', logo: 'https://www.fanduel.com/favicon.ico' },
+  { name: 'BetMGM', logo: 'https://www.betmgm.com/favicon.ico' },
+  { name: 'Caesars', logo: 'https://www.caesarssportsbook.com/favicon.ico' },
+  { name: 'PointsBet', logo: 'https://www.pointsbet.com/favicon.ico' },
+  { name: 'BetRivers', logo: 'https://www.betrivers.com/favicon.ico' },
+  { name: 'ESPN Bet', logo: 'https://espnbet.com/favicon.ico' },
+  { name: 'Bet365', logo: 'https://www.bet365.com/favicon.ico' },
+  { name: 'Kalshi', logo: 'https://kalshi.com/favicon.ico' },
+  { name: 'Polymarket', logo: 'https://polymarket.com/favicon.ico' },
+  { name: 'Other', logo: null },
+]
+
 const empty = { fight_id: '', bet_type: 'moneyline', pick: '', odds: '', stake_units: '', notes: '', sportsbook: '', confidence: 0 }
 const emptyLeg = { fight_id: '', pick: '', odds: '' }
 
@@ -48,6 +62,19 @@ const resultBadge = (result) => {
   if (result === 'loss') return { ...base, color: '#dc2626', background: '#fef2f2' }
   if (result === 'push') return { ...base, color: '#d97706', background: '#fffbeb' }
   return { ...base, color: 'var(--text-secondary)', background: 'var(--bg-hover)' }
+}
+
+const SportsbookBadge = ({ name }) => {
+  const book = SPORTSBOOKS.find(s => s.name === name)
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 8px', borderRadius: '4px' }}>
+      {book?.logo && (
+        <img src={book.logo} alt="" style={{ width: '12px', height: '12px', borderRadius: '2px' }}
+          onError={e => e.target.style.display = 'none'} />
+      )}
+      {name}
+    </span>
+  )
 }
 
 const getPropOptions = (betType, fighterA, fighterB) => {
@@ -306,6 +333,13 @@ export default function Bets() {
 
   const isParlay = form.bet_type === 'parlay'
 
+  const SportsbookSelect = ({ value, onChange }) => (
+    <select value={value} onChange={onChange} style={selectStyle}>
+      <option value="">Select (optional)</option>
+      {SPORTSBOOKS.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+    </select>
+  )
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
@@ -513,10 +547,7 @@ export default function Bets() {
                 </div>
                 <div>
                   <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sportsbook</label>
-                  <select value={form.sportsbook} onChange={e => setForm(f => ({ ...f, sportsbook: e.target.value }))} style={selectStyle}>
-                    <option value="">Select (optional)</option>
-                    {SPORTSBOOKS.map(s => <option key={s}>{s}</option>)}
-                  </select>
+                  <SportsbookSelect value={form.sportsbook} onChange={e => setForm(f => ({ ...f, sportsbook: e.target.value }))} />
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Confidence</label>
@@ -596,10 +627,7 @@ export default function Bets() {
               </div>
               <div>
                 <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sportsbook</label>
-                <select value={form.sportsbook} onChange={e => setForm(f => ({ ...f, sportsbook: e.target.value }))} style={selectStyle}>
-                  <option value="">Select (optional)</option>
-                  {SPORTSBOOKS.map(s => <option key={s}>{s}</option>)}
-                </select>
+                <SportsbookSelect value={form.sportsbook} onChange={e => setForm(f => ({ ...f, sportsbook: e.target.value }))} />
               </div>
               {form.stake_units && form.odds && (
                 <div style={{ gridColumn: '1 / -1', background: 'var(--bg-hover)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
@@ -679,11 +707,11 @@ export default function Bets() {
                     return (
                       <div key={bet.id} style={{ padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px', flexWrap: 'wrap' }}>
                             <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{bet.pick}</span>
                             <span style={resultBadge(bet.result)}>{bet.result}</span>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>{bet.bet_type}</span>
-                            {bet.sportsbook && <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>{bet.sportsbook}</span>}
+                            {bet.sportsbook && <SportsbookBadge name={bet.sportsbook} />}
                             {bet.confidence && <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>{'★'.repeat(bet.confidence)}</span>}
                           </div>
                           <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
@@ -696,7 +724,7 @@ export default function Bets() {
                         </div>
 
                         {bet.result === 'pending' ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginRight: '4px' }}>+{calcPayoutUnits(bet.stake_units, bet.odds).toFixed(2)}u</span>
                             <button onClick={() => handleSettle(bet.id, 'win', bet)} disabled={settling === bet.id}
                               style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Win</button>
@@ -712,7 +740,7 @@ export default function Bets() {
                             </button>
                           </div>
                         ) : (
-                          <div style={{ textAlign: 'right' }}>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
                             <div style={{ fontSize: '14px', fontWeight: '700', color: profitUnits >= 0 ? '#16a34a' : '#dc2626' }}>
                               {profitUnits >= 0 ? '+' : ''}{profitUnits.toFixed(2)}u
                             </div>
