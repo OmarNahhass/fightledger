@@ -5,7 +5,6 @@ import { getFightsByDate } from '../lib/mmaApi'
 import { exportBetsToCSV } from '../lib/exportCSV'
 
 const UPCOMING_UFC_EVENTS = [
-  
   { name: 'UFC Fight Night: Ankalaev vs. Guskov', promotion: 'UFC', event_date: '2026-07-25', location: 'Abu Dhabi, UAE', status: 'upcoming' },
   { name: 'UFC Fight Night: Medić vs. Rodriguez', promotion: 'UFC', event_date: '2026-08-01', location: 'Serbia', status: 'upcoming' },
   { name: 'UFC Fight Night: Gamrot vs Salkilld', promotion: 'UFC', event_date: '2026-08-08', location: 'TBD', status: 'upcoming' },
@@ -14,21 +13,7 @@ const UPCOMING_UFC_EVENTS = [
 ]
 
 const BET_TYPES = ['moneyline', 'parlay', 'props']
-
-const SPORTSBOOKS = [
-  { name: 'DraftKings', logo: 'https://www.draftkings.com/favicon.ico' },
-  { name: 'FanDuel', logo: 'https://www.fanduel.com/favicon.ico' },
-  { name: 'BetMGM', logo: 'https://www.betmgm.com/favicon.ico' },
-  { name: 'Caesars', logo: 'https://www.caesarssportsbook.com/favicon.ico' },
-  { name: 'PointsBet', logo: 'https://www.pointsbet.com/favicon.ico' },
-  { name: 'BetRivers', logo: 'https://www.betrivers.com/favicon.ico' },
-  { name: 'ESPN Bet', logo: 'https://espnbet.com/favicon.ico' },
-  { name: 'Bet365', logo: 'https://www.bet365.com/favicon.ico' },
-  { name: 'Kalshi', logo: 'https://kalshi.com/favicon.ico' },
-  { name: 'Polymarket', logo: 'https://polymarket.com/favicon.ico' },
-  { name: 'Other', logo: null },
-]
-
+const SPORTSBOOKS = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'PointsBet', 'BetRivers', 'ESPN Bet', 'Bet365', 'Kalshi', 'Polymarket', 'Other']
 const empty = { fight_id: '', bet_type: 'moneyline', pick: '', odds: '', stake_units: '', notes: '', sportsbook: '', confidence: 0 }
 const emptyLeg = { fight_id: '', pick: '', odds: '' }
 
@@ -64,19 +49,6 @@ const resultBadge = (result) => {
   return { ...base, color: 'var(--text-secondary)', background: 'var(--bg-hover)' }
 }
 
-const SportsbookBadge = ({ name }) => {
-  const book = SPORTSBOOKS.find(s => s.name === name)
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 8px', borderRadius: '4px' }}>
-      {book?.logo && (
-        <img src={book.logo} alt="" style={{ width: '12px', height: '12px', borderRadius: '2px' }}
-          onError={e => e.target.style.display = 'none'} />
-      )}
-      {name}
-    </span>
-  )
-}
-
 const getPropOptions = (betType, fighterA, fighterB) => {
   const f1 = fighterA || 'Fighter A'
   const f2 = fighterB || 'Fighter B'
@@ -88,7 +60,6 @@ const getPropOptions = (betType, fighterA, fighterB) => {
     'Ends in Round 1', 'Ends in Round 2', 'Ends in Round 3', 'Ends in Round 4', 'Ends in Round 5',
     'Ends in Rounds 1-2', 'Ends in Rounds 3-4',
     'Fight to start Round 2', 'Fight to start Round 3', 'Fight to start Round 4', 'Fight to start Round 5',
-    'Fight does not start Round 2', 'Fight does not start Round 3',
     `${f1} to finish in Round 1`, `${f1} to finish in Round 2`, `${f1} to finish in Round 3`,
     `${f2} to finish in Round 1`, `${f2} to finish in Round 2`, `${f2} to finish in Round 3`,
     'Over 0.5 rounds', 'Under 0.5 rounds', 'Over 1.5 rounds', 'Under 1.5 rounds',
@@ -108,28 +79,7 @@ const selectStyle = { ...inputStyle, cursor: 'pointer' }
 const btnPrimary = { background: 'var(--text-primary)', color: 'var(--bg)', border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }
 const btnGhost = { background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', cursor: 'pointer' }
 
-const SportsbookSelect = ({ value, onChange }) => (
-  <select value={value} onChange={onChange} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: 'var(--text-primary)', outline: 'none', cursor: 'pointer' }}>
-    <option value="">Select (optional)</option>
-    {SPORTSBOOKS.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
-  </select>
-)
-
-const ConfidenceSelector = ({ value, onChange }) => (
-  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-    {[1, 2, 3, 4, 5].map(n => (
-      <button key={n} type="button" onClick={() => onChange(value === n ? 0 : n)}
-        style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-input)', background: value >= n ? 'var(--text-primary)' : 'var(--bg-input)', color: value >= n ? 'var(--bg)' : 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s' }}>
-        {n}
-      </button>
-    ))}
-    {value > 0 && (
-      <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
-        {value === 1 ? 'Very low' : value === 2 ? 'Low' : value === 3 ? 'Medium' : value === 4 ? 'High' : 'Very high'}
-      </span>
-    )}
-  </div>
-)
+const today = new Date(new Date().setHours(0, 0, 0, 0))
 
 export default function Bets() {
   const { user } = useAuth()
@@ -157,7 +107,13 @@ export default function Bets() {
   }, [user])
 
   const myEventDates = new Set(myEvents.map(e => e.event_date))
-  const futureEvents = UPCOMING_UFC_EVENTS.filter(e => new Date(e.event_date) >= new Date())
+  const futureTrackedEvents = myEvents.filter(e => new Date(e.event_date) >= today)
+  const futureEvents = UPCOMING_UFC_EVENTS.filter(e => new Date(e.event_date) >= today)
+
+  const allUpcomingEvents = [
+    ...futureTrackedEvents,
+    ...futureEvents.filter(e => !myEventDates.has(e.event_date))
+  ].sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
 
   const handleSelectEvent = async (ufc) => {
     setAddingEvent(ufc.event_date)
@@ -174,7 +130,6 @@ export default function Bets() {
         try {
           const apiFights = await getFightsByDate(event.event_date)
           for (const [i, f] of apiFights.entries()) {
-            if (f.status?.short === 'CANC' || f.status?.long === 'Cancelled') continue
             const fighterA = f.fighters?.first?.name
             const fighterB = f.fighters?.second?.name
             if (!fighterA || !fighterB) continue
@@ -199,12 +154,8 @@ export default function Bets() {
   }
 
   const resetAll = () => {
-    setStep(null)
-    setSelectedEvent(null)
-    setFights([])
-    setForm(empty)
-    setCustomPick(false)
-    setParlayLegs([{ ...emptyLeg }, { ...emptyLeg }])
+    setStep(null); setSelectedEvent(null); setFights([]); setForm(empty)
+    setCustomPick(false); setParlayLegs([{ ...emptyLeg }, { ...emptyLeg }])
   }
 
   const updateLeg = (i, field, value) => {
@@ -232,16 +183,11 @@ export default function Bets() {
           return `Leg ${i + 1}: ${l.pick} (${Number(l.odds) > 0 ? '+' : ''}${l.odds})${fight ? ` - ${fight.fighter_a} vs ${fight.fighter_b}` : ''}`
         }).join(' | ')
         const bet = {
-          fight_id: null,
-          bet_type: 'parlay',
+          fight_id: null, bet_type: 'parlay',
           pick: validLegs.map(l => l.pick).join(' + '),
-          odds,
-          stake: units * unitSize,
-          stake_units: units,
+          odds, stake: units * unitSize, stake_units: units,
           potential_payout: potentialUnits * unitSize + units * unitSize,
-          notes: legsSummary,
-          sportsbook: form.sportsbook || null,
-          confidence: form.confidence || null,
+          notes: legsSummary, sportsbook: form.sportsbook || null, confidence: form.confidence || null,
         }
         const newBet = await createBet(bet)
         setBets(prev => [newBet, ...prev])
@@ -250,7 +196,6 @@ export default function Bets() {
       finally { setSaving(false) }
       return
     }
-
     if (!form.pick || !form.odds || !form.stake_units) return
     setSaving(true)
     try {
@@ -258,16 +203,10 @@ export default function Bets() {
       const odds = Number(form.odds)
       const potentialUnits = calcPayoutUnits(units, odds)
       const bet = {
-        fight_id: form.fight_id || null,
-        bet_type: form.bet_type,
-        pick: form.pick,
-        odds,
-        stake: units * unitSize,
-        stake_units: units,
+        fight_id: form.fight_id || null, bet_type: form.bet_type, pick: form.pick,
+        odds, stake: units * unitSize, stake_units: units,
         potential_payout: potentialUnits * unitSize + units * unitSize,
-        notes: form.notes,
-        sportsbook: form.sportsbook || null,
-        confidence: form.confidence || null,
+        notes: form.notes, sportsbook: form.sportsbook || null, confidence: form.confidence || null,
       }
       const newBet = await createBet(bet)
       setBets(prev => [newBet, ...prev])
@@ -326,9 +265,7 @@ export default function Bets() {
         {!step && (
           <div style={{ display: 'flex', gap: '8px' }}>
             {bets.length > 0 && (
-              <button onClick={() => exportBetsToCSV(bets)} style={{ ...btnGhost, fontSize: '12px', padding: '7px 14px' }}>
-                Export CSV
-              </button>
+              <button onClick={() => exportBetsToCSV(bets)} style={{ ...btnGhost, fontSize: '12px', padding: '7px 14px' }}>Export CSV</button>
             )}
             <button style={btnPrimary} onClick={() => setStep('pick-event')}>+ Add bet</button>
           </div>
@@ -342,51 +279,24 @@ export default function Bets() {
             <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Select an event</div>
             <button onClick={resetAll} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '13px' }}>Cancel</button>
           </div>
-
-          {myEvents.length > 0 && (
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>Your tracked events</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {myEvents.map(event => (
-                  <div key={event.id} onClick={() => handleSelectEvent({ ...event })}
-                    style={{ padding: '12px 16px', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-input)'}>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{event.name}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                        {new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>→</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {allUpcomingEvents.map(event => (
+              <div key={event.event_date || event.id}
+                onClick={() => !addingEvent && handleSelectEvent(event)}
+                style={{ padding: '12px 16px', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px', cursor: addingEvent ? 'wait' : 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: addingEvent === event.event_date ? 0.5 : 1 }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-input)'}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{event.name}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    {new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                    {event.location && event.location !== 'TBD' && ` · ${event.location}`}
                   </div>
-                ))}
+                </div>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{addingEvent === event.event_date ? '...' : '→'}</span>
               </div>
-            </div>
-          )}
-
-          {futureEvents.filter(e => !myEventDates.has(e.event_date)).length > 0 && (
-            <div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px' }}>Upcoming UFC events</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {futureEvents.filter(e => !myEventDates.has(e.event_date)).map(event => (
-                  <div key={event.event_date} onClick={() => !addingEvent && handleSelectEvent(event)}
-                    style={{ padding: '12px 16px', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px', cursor: addingEvent ? 'wait' : 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: addingEvent === event.event_date ? 0.5 : 1 }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-input)'}>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{event.name}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                        {new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                        {event.location !== 'TBD' && ` · ${event.location}`}
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{addingEvent === event.event_date ? '...' : '→'}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       )}
 
@@ -415,13 +325,7 @@ export default function Bets() {
               {BET_TYPES.map(t => (
                 <button key={t} type="button"
                   onClick={() => { setForm(f => ({ ...f, bet_type: t, pick: '' })); setCustomPick(false) }}
-                  style={{
-                    padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
-                    border: '1px solid var(--border-input)', cursor: 'pointer',
-                    background: form.bet_type === t ? 'var(--text-primary)' : 'var(--bg-input)',
-                    color: form.bet_type === t ? 'var(--bg)' : 'var(--text-secondary)',
-                    transition: 'all 0.15s',
-                  }}>
+                  style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', border: '1px solid var(--border-input)', cursor: 'pointer', background: form.bet_type === t ? 'var(--text-primary)' : 'var(--bg-input)', color: form.bet_type === t ? 'var(--bg)' : 'var(--text-secondary)', transition: 'all 0.15s' }}>
                   {t === 'moneyline' ? 'Moneyline' : t === 'parlay' ? 'Parlay' : 'Props'}
                 </button>
               ))}
@@ -431,10 +335,7 @@ export default function Bets() {
           {/* PARLAY BUILDER */}
           {isParlay ? (
             <div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px' }}>
-                Parlay legs ({parlayLegs.length})
-              </div>
-
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px' }}>Parlay legs ({parlayLegs.length})</div>
               {parlayLegs.map((leg, i) => {
                 const legFight = fights.find(f => f.id === leg.fight_id)
                 return (
@@ -449,7 +350,7 @@ export default function Bets() {
                       <div>
                         <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fight</label>
                         <select value={leg.fight_id} onChange={e => updateLeg(i, 'fight_id', e.target.value)} style={{ ...selectStyle, fontSize: '12px', padding: '7px 10px' }}>
-                          <option value="">Select a fight</option>
+                          <option value="">Any fight</option>
                           {fights.map(f => <option key={f.id} value={f.id}>{f.fighter_a} vs {f.fighter_b}</option>)}
                         </select>
                       </div>
@@ -457,24 +358,15 @@ export default function Bets() {
                         <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pick *</label>
                         {legFight ? (
                           <select value={leg.pick} onChange={e => updateLeg(i, 'pick', e.target.value)} style={{ ...selectStyle, fontSize: '12px', padding: '7px 10px' }}>
-                            <option value="">Select pick</option>
-                            <optgroup label="Moneyline">
-                              <option value={legFight.fighter_a}>{legFight.fighter_a}</option>
-                              <option value={legFight.fighter_b}>{legFight.fighter_b}</option>
-                            </optgroup>
+                            <option value="">Select</option>
+                            <option value={legFight.fighter_a}>{legFight.fighter_a}</option>
+                            <option value={legFight.fighter_b}>{legFight.fighter_b}</option>
                             <optgroup label="Props">
-                              {getPropOptions('props', legFight.fighter_a, legFight.fighter_b).map(o => (
-                                <option key={o}>{o}</option>
-                              ))}
+                              {getPropOptions('props', legFight.fighter_a, legFight.fighter_b).map(o => <option key={o}>{o}</option>)}
                             </optgroup>
                           </select>
                         ) : (
-                          <div>
-                            <input value={leg.pick} onChange={e => updateLeg(i, 'pick', e.target.value)}
-                              placeholder={fights.length > 0 ? 'Select a fight first' : 'Fights load closer to event day'}
-                              style={{ ...inputStyle, fontSize: '12px', padding: '7px 10px', opacity: fights.length > 0 ? 0.5 : 1 }} />
-                            {fights.length === 0 && <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px' }}>Fight card not available yet</div>}
-                          </div>
+                          <input value={leg.pick} onChange={e => updateLeg(i, 'pick', e.target.value)} placeholder="e.g. Makhachev" style={{ ...inputStyle, fontSize: '12px', padding: '7px 10px' }} />
                         )}
                       </div>
                       <div>
@@ -485,9 +377,7 @@ export default function Bets() {
                   </div>
                 )
               })}
-
               <button onClick={addLeg} style={{ ...btnGhost, fontSize: '12px', padding: '7px 14px', marginBottom: '16px' }}>+ Add leg</button>
-
               {parlayOdds && (
                 <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '14px', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -506,7 +396,6 @@ export default function Bets() {
                   )}
                 </div>
               )}
-
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
                 <div>
                   <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stake (units) *</label>
@@ -514,11 +403,26 @@ export default function Bets() {
                 </div>
                 <div>
                   <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sportsbook</label>
-                  <SportsbookSelect value={form.sportsbook} onChange={e => setForm(f => ({ ...f, sportsbook: e.target.value }))} />
+                  <select value={form.sportsbook} onChange={e => setForm(f => ({ ...f, sportsbook: e.target.value }))} style={selectStyle}>
+                    <option value="">Select (optional)</option>
+                    {SPORTSBOOKS.map(s => <option key={s}>{s}</option>)}
+                  </select>
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Confidence</label>
-                  <ConfidenceSelector value={form.confidence} onChange={v => setForm(f => ({ ...f, confidence: v }))} />
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <button key={n} type="button" onClick={() => setForm(f => ({ ...f, confidence: f.confidence === n ? 0 : n }))}
+                        style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-input)', background: form.confidence >= n ? 'var(--text-primary)' : 'var(--bg-input)', color: form.confidence >= n ? 'var(--bg)' : 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s' }}>
+                        {n}
+                      </button>
+                    ))}
+                    {form.confidence > 0 && (
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
+                        {form.confidence === 1 ? 'Very low' : form.confidence === 2 ? 'Low' : form.confidence === 3 ? 'Medium' : form.confidence === 4 ? 'High' : 'Very high'}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -582,7 +486,10 @@ export default function Bets() {
               </div>
               <div>
                 <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sportsbook</label>
-                <SportsbookSelect value={form.sportsbook} onChange={e => setForm(f => ({ ...f, sportsbook: e.target.value }))} />
+                <select value={form.sportsbook} onChange={e => setForm(f => ({ ...f, sportsbook: e.target.value }))} style={selectStyle}>
+                  <option value="">Select (optional)</option>
+                  {SPORTSBOOKS.map(s => <option key={s}>{s}</option>)}
+                </select>
               </div>
               {form.stake_units && form.odds && (
                 <div style={{ gridColumn: '1 / -1', background: 'var(--bg-hover)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
@@ -592,7 +499,19 @@ export default function Bets() {
               )}
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Confidence</label>
-                <ConfidenceSelector value={form.confidence} onChange={v => setForm(f => ({ ...f, confidence: v }))} />
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button key={n} type="button" onClick={() => setForm(f => ({ ...f, confidence: f.confidence === n ? 0 : n }))}
+                      style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-input)', background: form.confidence >= n ? 'var(--text-primary)' : 'var(--bg-input)', color: form.confidence >= n ? 'var(--bg)' : 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s' }}>
+                      {n}
+                    </button>
+                  ))}
+                  {form.confidence > 0 && (
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
+                      {form.confidence === 1 ? 'Very low' : form.confidence === 2 ? 'Low' : form.confidence === 3 ? 'Medium' : form.confidence === 4 ? 'High' : 'Very high'}
+                    </span>
+                  )}
+                </div>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Notes</label>
@@ -643,18 +562,17 @@ export default function Bets() {
                       })()}
                     </div>
                   </div>
-
                   {group.bets.map((bet, i) => {
                     const profitUnits = bet.result === 'win' ? calcPayoutUnits(bet.stake_units, bet.odds) : bet.result === 'loss' ? -Number(bet.stake_units) : 0
                     const isLast = i === group.bets.length - 1
                     return (
                       <div key={bet.id} style={{ padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
                             <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{bet.pick}</span>
                             <span style={resultBadge(bet.result)}>{bet.result}</span>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>{bet.bet_type}</span>
-                            {bet.sportsbook && <SportsbookBadge name={bet.sportsbook} />}
+                            {bet.sportsbook && <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>{bet.sportsbook}</span>}
                             {bet.confidence && <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>{'★'.repeat(bet.confidence)}</span>}
                           </div>
                           <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
@@ -665,31 +583,20 @@ export default function Bets() {
                             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px', maxWidth: '400px' }}>{bet.notes}</div>
                           )}
                         </div>
-
                         {bet.result === 'pending' ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginRight: '4px' }}>+{calcPayoutUnits(bet.stake_units, bet.odds).toFixed(2)}u</span>
-                            <button onClick={() => handleSettle(bet.id, 'win', bet)} disabled={settling === bet.id}
-                              style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Win</button>
-                            <button onClick={() => handleSettle(bet.id, 'loss', bet)} disabled={settling === bet.id}
-                              style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Loss</button>
-                            <button onClick={() => handleSettle(bet.id, 'push', bet)} disabled={settling === bet.id}
-                              style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Push</button>
-                            <button onClick={() => handleDelete(bet.id)} disabled={deleting === bet.id}
-                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '14px', padding: '5px', marginLeft: '2px' }}
-                              onMouseEnter={e => e.currentTarget.style.color = '#dc2626'}
-                              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
-                              ✕
-                            </button>
+                            <button onClick={() => handleSettle(bet.id, 'win', bet)} disabled={settling === bet.id} style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Win</button>
+                            <button onClick={() => handleSettle(bet.id, 'loss', bet)} disabled={settling === bet.id} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Loss</button>
+                            <button onClick={() => handleSettle(bet.id, 'push', bet)} disabled={settling === bet.id} style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Push</button>
+                            <button onClick={() => handleDelete(bet.id)} disabled={deleting === bet.id} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px' }}>×</button>
                           </div>
                         ) : (
-                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ textAlign: 'right' }}>
                             <div style={{ fontSize: '14px', fontWeight: '700', color: profitUnits >= 0 ? '#16a34a' : '#dc2626' }}>
                               {profitUnits >= 0 ? '+' : ''}{profitUnits.toFixed(2)}u
                             </div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                              ${(profitUnits * unitSize).toFixed(2)}
-                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>${(profitUnits * unitSize).toFixed(2)}</div>
                           </div>
                         )}
                       </div>
