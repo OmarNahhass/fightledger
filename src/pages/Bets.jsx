@@ -5,12 +5,12 @@ import { getFightsByDate } from '../lib/mmaApi'
 import { exportBetsToCSV } from '../lib/exportCSV'
 
 const UPCOMING_UFC_EVENTS = [
-  { name: 'UFC Fight Night: Du Plessis vs Usman', promotion: 'UFC', event_date: '2026-07-18', location: 'TBD', status: 'upcoming' },
-  { name: 'UFC Fight Night: Ankalaev vs Rountree Jr', promotion: 'UFC', event_date: '2026-07-25', location: 'Abu Dhabi, UAE', status: 'upcoming' },
-  { name: 'UFC Fight Night: Serbia', promotion: 'UFC', event_date: '2026-08-01', location: 'Serbia', status: 'upcoming' },
+  
+  { name: 'UFC Fight Night: Ankalaev vs. Guskov', promotion: 'UFC', event_date: '2026-07-25', location: 'Abu Dhabi, UAE', status: 'upcoming' },
+  { name: 'UFC Fight Night: Medić vs. Rodriguez', promotion: 'UFC', event_date: '2026-08-01', location: 'Serbia', status: 'upcoming' },
   { name: 'UFC Fight Night: Gamrot vs Salkilld', promotion: 'UFC', event_date: '2026-08-08', location: 'TBD', status: 'upcoming' },
-  { name: 'UFC 330: Makhachev vs Machado Garry', promotion: 'UFC', event_date: '2026-08-15', location: 'Philadelphia, PA', status: 'upcoming' },
-  { name: 'UFC Fight Night: TBD', promotion: 'UFC', event_date: '2026-09-05', location: 'TBD', status: 'upcoming' },
+  { name: 'UFC 330: Makhachev vs. Machado Garry', promotion: 'UFC', event_date: '2026-08-15', location: 'Philadelphia, PA', status: 'upcoming' },
+  { name: 'UFC Fight Night: Hernandez vs. Rodrigues', promotion: 'UFC', event_date: '2026-08-23', location: 'TBD', status: 'upcoming' },
 ]
 
 const BET_TYPES = ['moneyline', 'parlay', 'props']
