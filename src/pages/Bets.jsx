@@ -18,66 +18,26 @@ const empty = { fight_id: '', bet_type: 'moneyline', pick: '', odds: '', stake_u
 const emptyLeg = { fight_id: '', pick: '', odds: '' }
 
 const FIGHT_PROPS = [
-  'Goes to Decision',
-  'Does Not Go to Decision',
-  'Fight Goes the Distance',
-  'Fight Does Not Go the Distance',
-  'Ends in Round 1',
-  'Ends in Round 2',
-  'Ends in Round 3',
-  'Ends in Round 4',
-  'Ends in Round 5',
-  'Ends in Rounds 1-2',
-  'Ends in Rounds 1-3',
-  'Over 0.5 Rounds',
-  'Under 0.5 Rounds',
-  'Over 1.5 Rounds',
-  'Under 1.5 Rounds',
-  'Over 2.5 Rounds',
-  'Under 2.5 Rounds',
-  'Over 3.5 Rounds',
-  'Under 3.5 Rounds',
-  'Over 4.5 Rounds',
-  'Under 4.5 Rounds',
-  'At Least One Knockdown',
-  'No Knockdowns',
-  'At Least One Takedown',
-  'No Takedowns',
-  'Most Significant Strikes Landed — Fighter A',
-  'Most Significant Strikes Landed — Fighter B',
-  'Most Takedowns Landed — Fighter A',
-  'Most Takedowns Landed — Fighter B',
-  'Fight Stopped by Doctor',
-  'Point Deduction (Any Round)',
-  'Point Deduction Round 1',
-  'Point Deduction Round 2',
-  'Point Deduction Round 3',
-  'No Contest',
-  'Technical Draw',
+  'Goes to Decision', 'Does Not Go to Decision', 'Fight Goes the Distance', 'Fight Does Not Go the Distance',
+  'Ends in Round 1', 'Ends in Round 2', 'Ends in Round 3', 'Ends in Round 4', 'Ends in Round 5',
+  'Ends in Rounds 1-2', 'Ends in Rounds 1-3',
+  'Over 0.5 Rounds', 'Under 0.5 Rounds', 'Over 1.5 Rounds', 'Under 1.5 Rounds',
+  'Over 2.5 Rounds', 'Under 2.5 Rounds', 'Over 3.5 Rounds', 'Under 3.5 Rounds', 'Over 4.5 Rounds', 'Under 4.5 Rounds',
+  'At Least One Knockdown', 'No Knockdowns', 'At Least One Takedown', 'No Takedowns',
+  'Most Significant Strikes Landed — Fighter A', 'Most Significant Strikes Landed — Fighter B',
+  'Most Takedowns Landed — Fighter A', 'Most Takedowns Landed — Fighter B',
+  'Fight Stopped by Doctor', 'Point Deduction (Any Round)', 'Point Deduction Round 1', 'Point Deduction Round 2', 'Point Deduction Round 3',
+  'No Contest', 'Technical Draw',
 ]
 
 const FIGHTER_PROPS = [
-  'by KO/TKO',
-  'by Submission',
-  'by Decision',
-  'by Unanimous Decision',
-  'by Split Decision',
-  'by TKO (Strikes)',
-  'by TKO (Doctor Stoppage)',
-  'to Finish Fight',
-  'to Win Round 1',
-  'to Win Round 2',
-  'to Win Round 3',
-  'to Finish in Round 1',
-  'to Finish in Round 2',
-  'to Finish in Round 3',
-  'to Land First Significant Strike',
-  'to Score First Takedown',
-  'to be Knocked Down',
-  'to Record a Takedown',
-  'to Attempt a Submission',
-  'to Land More Significant Strikes',
-  'to Land More Takedowns',
+  'by KO/TKO', 'by Submission', 'by Decision', 'by Unanimous Decision', 'by Split Decision',
+  'by TKO (Strikes)', 'by TKO (Doctor Stoppage)', 'to Finish Fight',
+  'to Win Round 1', 'to Win Round 2', 'to Win Round 3',
+  'to Finish in Round 1', 'to Finish in Round 2', 'to Finish in Round 3',
+  'to Land First Significant Strike', 'to Score First Takedown',
+  'to be Knocked Down', 'to Record a Takedown', 'to Attempt a Submission',
+  'to Land More Significant Strikes', 'to Land More Takedowns',
 ]
 
 const calcPayoutUnits = (units, odds) => {
@@ -109,6 +69,7 @@ const resultBadge = (result) => {
   if (result === 'win') return { ...base, color: '#16a34a', background: '#f0fdf4' }
   if (result === 'loss') return { ...base, color: '#dc2626', background: '#fef2f2' }
   if (result === 'push') return { ...base, color: '#d97706', background: '#fffbeb' }
+  if (result === 'void') return { ...base, color: '#7c3aed', background: '#f5f3ff' }
   return { ...base, color: 'var(--text-secondary)', background: 'var(--bg-hover)' }
 }
 
@@ -200,11 +161,8 @@ export default function Bets() {
   const parlayOdds = calcParlayOdds(parlayLegs)
   const parlayPotentialUnits = parlayOdds ? calcPayoutUnits(form.stake_units, parlayOdds) : 0
 
-  // Build the pick string for props
   const buildPropPick = () => {
-    if (form.prop_tier === 'fighter' && form.prop_fighter && form.pick) {
-      return `${form.prop_fighter} ${form.pick}`
-    }
+    if (form.prop_tier === 'fighter' && form.prop_fighter && form.pick) return `${form.prop_fighter} ${form.pick}`
     return form.pick
   }
 
@@ -264,7 +222,7 @@ export default function Bets() {
       const odds = Number(bet.odds)
       let actual_payout = 0
       if (result === 'win') actual_payout = (calcPayoutUnits(units, odds) + units) * unitSize
-      else if (result === 'push') actual_payout = units * unitSize
+      else if (result === 'push' || result === 'void') actual_payout = units * unitSize
       await updateBetResult(betId, { result, actual_payout })
       setBets(prev => prev.map(b => b.id === betId ? { ...b, result, actual_payout } : b))
     } catch (err) { console.error(err) }
@@ -297,7 +255,6 @@ export default function Bets() {
 
   const isParlay = form.bet_type === 'parlay'
   const isProps = form.bet_type === 'props'
-
   const labelStyle = { fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }
 
   return (
@@ -462,26 +419,20 @@ export default function Bets() {
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={labelStyle}>Confidence</label>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    {[1, 2, 3, 4, 5].map(n => (
+                    {[1,2,3,4,5].map(n => (
                       <button key={n} type="button" onClick={() => setForm(f => ({ ...f, confidence: f.confidence === n ? 0 : n }))}
                         style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-input)', background: form.confidence >= n ? 'var(--text-primary)' : 'var(--bg-input)', color: form.confidence >= n ? 'var(--bg)' : 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s' }}>
                         {n}
                       </button>
                     ))}
-                    {form.confidence > 0 && (
-                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
-                        {form.confidence === 1 ? 'Very low' : form.confidence === 2 ? 'Low' : form.confidence === 3 ? 'Medium' : form.confidence === 4 ? 'High' : 'Very high'}
-                      </span>
-                    )}
+                    {form.confidence > 0 && <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>{['','Very low','Low','Medium','High','Very high'][form.confidence]}</span>}
                   </div>
                 </div>
               </div>
             </div>
 
           ) : isProps ? (
-            /* PROPS FORM */
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
-              {/* Fight selector */}
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={labelStyle}>Fight</label>
                 <select value={form.fight_id} onChange={e => setForm(f => ({ ...f, fight_id: e.target.value, pick: '', prop_fighter: '' }))} style={{ ...selectStyle, opacity: fights.length ? 1 : 0.5 }}>
@@ -489,12 +440,10 @@ export default function Bets() {
                   {fights.map(f => <option key={f.id} value={f.id}>{f.fighter_a} vs {f.fighter_b}</option>)}
                 </select>
               </div>
-
-              {/* Prop tier toggle */}
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={labelStyle}>Prop type</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  {['fight', 'fighter'].map(tier => (
+                  {['fight','fighter'].map(tier => (
                     <button key={tier} type="button"
                       onClick={() => setForm(f => ({ ...f, prop_tier: tier, pick: '', prop_fighter: '' }))}
                       style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', border: '1px solid var(--border-input)', cursor: 'pointer', background: form.prop_tier === tier ? 'var(--text-primary)' : 'var(--bg-input)', color: form.prop_tier === tier ? 'var(--bg)' : 'var(--text-secondary)', transition: 'all 0.15s' }}>
@@ -503,8 +452,6 @@ export default function Bets() {
                   ))}
                 </div>
               </div>
-
-              {/* Fighter selector (only for fighter props) */}
               {form.prop_tier === 'fighter' && (
                 <div>
                   <label style={labelStyle}>Fighter *</label>
@@ -515,12 +462,10 @@ export default function Bets() {
                       <option value={selectedFight.fighter_b}>{selectedFight.fighter_b}</option>
                     </select>
                   ) : (
-                    <input value={form.prop_fighter} onChange={e => setForm(f => ({ ...f, prop_fighter: e.target.value, pick: '' }))} placeholder="e.g. Islam Makhachev" style={inputStyle} />
+                    <input value={form.prop_fighter} onChange={e => setForm(f => ({ ...f, prop_fighter: e.target.value }))} placeholder="e.g. Islam Makhachev" style={inputStyle} />
                   )}
                 </div>
               )}
-
-              {/* Prop pick */}
               <div style={{ gridColumn: form.prop_tier === 'fighter' ? '2 / -1' : '1 / -1' }}>
                 <label style={labelStyle}>{form.prop_tier === 'fighter' ? 'Fighter Prop *' : 'Fight Prop *'}</label>
                 {!customPick ? (
@@ -530,9 +475,7 @@ export default function Bets() {
                       else setForm(f => ({ ...f, pick: e.target.value }))
                     }} style={selectStyle}>
                       <option value="">Select prop</option>
-                      {(form.prop_tier === 'fighter' ? FIGHTER_PROPS : FIGHT_PROPS).map(o => (
-                        <option key={o} value={o}>{o}</option>
-                      ))}
+                      {(form.prop_tier === 'fighter' ? FIGHTER_PROPS : FIGHT_PROPS).map(o => <option key={o} value={o}>{o}</option>)}
                       <option value="__custom">Other (type manually)</option>
                     </select>
                     <button type="button" onClick={() => setCustomPick(true)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px', marginTop: '4px' }}>Type manually →</button>
@@ -544,15 +487,12 @@ export default function Bets() {
                   </div>
                 )}
               </div>
-
-              {/* Preview of full pick */}
               {(form.prop_tier === 'fight' ? form.pick : (form.prop_fighter && form.pick)) && (
                 <div style={{ gridColumn: '1 / -1', background: 'var(--bg-hover)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: 'var(--text-primary)' }}>
                   <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Pick: </span>
                   <strong>{buildPropPick()}</strong>
                 </div>
               )}
-
               <div>
                 <label style={labelStyle}>Odds (American) *</label>
                 <input value={form.odds} onChange={e => setForm(f => ({ ...f, odds: e.target.value }))} placeholder="-150 or +200" style={inputStyle} />
@@ -577,17 +517,13 @@ export default function Bets() {
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={labelStyle}>Confidence</label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  {[1, 2, 3, 4, 5].map(n => (
+                  {[1,2,3,4,5].map(n => (
                     <button key={n} type="button" onClick={() => setForm(f => ({ ...f, confidence: f.confidence === n ? 0 : n }))}
                       style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-input)', background: form.confidence >= n ? 'var(--text-primary)' : 'var(--bg-input)', color: form.confidence >= n ? 'var(--bg)' : 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s' }}>
                       {n}
                     </button>
                   ))}
-                  {form.confidence > 0 && (
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
-                      {form.confidence === 1 ? 'Very low' : form.confidence === 2 ? 'Low' : form.confidence === 3 ? 'Medium' : form.confidence === 4 ? 'High' : 'Very high'}
-                    </span>
-                  )}
+                  {form.confidence > 0 && <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>{['','Very low','Low','Medium','High','Very high'][form.confidence]}</span>}
                 </div>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
@@ -597,7 +533,6 @@ export default function Bets() {
             </div>
 
           ) : (
-            /* MONEYLINE FORM */
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
               <div>
                 <label style={labelStyle}>Fight</label>
@@ -649,17 +584,13 @@ export default function Bets() {
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={labelStyle}>Confidence</label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  {[1, 2, 3, 4, 5].map(n => (
+                  {[1,2,3,4,5].map(n => (
                     <button key={n} type="button" onClick={() => setForm(f => ({ ...f, confidence: f.confidence === n ? 0 : n }))}
                       style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-input)', background: form.confidence >= n ? 'var(--text-primary)' : 'var(--bg-input)', color: form.confidence >= n ? 'var(--bg)' : 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s' }}>
                       {n}
                     </button>
                   ))}
-                  {form.confidence > 0 && (
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
-                      {form.confidence === 1 ? 'Very low' : form.confidence === 2 ? 'Low' : form.confidence === 3 ? 'Medium' : form.confidence === 4 ? 'High' : 'Very high'}
-                    </span>
-                  )}
+                  {form.confidence > 0 && <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>{['','Very low','Low','Medium','High','Very high'][form.confidence]}</span>}
                 </div>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
@@ -738,14 +669,17 @@ export default function Bets() {
                             <button onClick={() => handleSettle(bet.id, 'win', bet)} disabled={settling === bet.id} style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Win</button>
                             <button onClick={() => handleSettle(bet.id, 'loss', bet)} disabled={settling === bet.id} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Loss</button>
                             <button onClick={() => handleSettle(bet.id, 'push', bet)} disabled={settling === bet.id} style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Push</button>
+                            <button onClick={() => handleSettle(bet.id, 'void', bet)} disabled={settling === bet.id} style={{ background: '#f5f3ff', color: '#7c3aed', border: '1px solid #ddd6fe', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Void</button>
                             <button onClick={() => handleDelete(bet.id)} disabled={deleting === bet.id} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px' }}>×</button>
                           </div>
                         ) : (
                           <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '14px', fontWeight: '700', color: profitUnits >= 0 ? '#16a34a' : '#dc2626' }}>
-                              {profitUnits >= 0 ? '+' : ''}{profitUnits.toFixed(2)}u
+                            <div style={{ fontSize: '14px', fontWeight: '700', color: bet.result === 'void' ? '#7c3aed' : profitUnits >= 0 ? '#16a34a' : '#dc2626' }}>
+                              {bet.result === 'void' ? 'voided' : `${profitUnits >= 0 ? '+' : ''}${profitUnits.toFixed(2)}u`}
                             </div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>${(profitUnits * unitSize).toFixed(2)}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                              {bet.result === 'void' ? 'stake returned' : `$${(profitUnits * unitSize).toFixed(2)}`}
+                            </div>
                           </div>
                         )}
                       </div>
