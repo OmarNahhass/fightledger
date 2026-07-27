@@ -1,20 +1,40 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getUnitSize, setUnitSize, getProfile, updateProfile, uploadAvatar } from '../lib/db'
 import { useAuth } from '../lib/AuthContext'
+import emailjs from '@emailjs/browser'
+
+const EMAILJS_SERVICE_ID = 'service_ech9ex9'
+const EMAILJS_TEMPLATE_ID = 'template_iqdnrmd'
+const EMAILJS_PUBLIC_KEY = 'L4s6izzbLRxd9T3hC'
+
+const inputStyle = {
+  background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px',
+  padding: '9px 12px', fontSize: '13px', color: 'var(--text-primary)', outline: 'none', width: '100%',
+}
+const btnPrimary = {
+  background: 'var(--text-primary)', color: 'var(--bg)', border: 'none', borderRadius: '8px',
+  padding: '9px 18px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+}
 
 export default function Settings() {
   const { user } = useAuth()
   const [unitSize, setUnit] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [bio, setBio] = useState('')
-  const [avatarUrl, setAvatarUrl] = useState(null)
+  const [avatarUrl, setAvatarUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [savingUnit, setSavingUnit] = useState(false)
   const [savingProfile, setSavingProfile] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [savedUnit, setSavedUnit] = useState(false)
   const [savedProfile, setSavedProfile] = useState(false)
-  const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const fileRef = useRef()
+
+  // Contact form state
+  const [subject, setSubject] = useState('')
+  const [message, setMessage] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [sendError, setSendError] = useState(null)
 
   useEffect(() => {
     if (!user) return
@@ -23,7 +43,7 @@ export default function Settings() {
         setUnit(String(u))
         setDisplayName(profile?.display_name || user.email.split('@')[0])
         setBio(profile?.bio || '')
-        setAvatarUrl(profile?.avatar_url || null)
+        setAvatarUrl(profile?.avatar_url || '')
       })
       .catch(console.error)
       .finally(() => setLoading(false))
@@ -38,48 +58,53 @@ export default function Settings() {
   }
 
   const handleSaveProfile = async () => {
+    if (!displayName.trim()) return
     setSavingProfile(true)
     try {
-      await updateProfile(user.id, { display_name: displayName.trim(), bio: bio.trim(), avatar_url: avatarUrl })
+      await updateProfile(user.id, { display_name: displayName.trim(), bio: bio.trim() })
       setSavedProfile(true)
       setTimeout(() => setSavedProfile(false), 2000)
-    }
-    catch (err) { console.error(err) }
+    } catch (err) { console.error(err) }
     finally { setSavingProfile(false) }
   }
 
-  const handleAvatarChange = async (e) => {
+  const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
     setUploadingAvatar(true)
     try {
       const url = await uploadAvatar(user.id, file)
       setAvatarUrl(url)
-      await updateProfile(user.id, { display_name: displayName, bio, avatar_url: url })
-    }
-    catch (err) { console.error(err) }
+      await updateProfile(user.id, { avatar_url: url })
+    } catch (err) { console.error(err) }
     finally { setUploadingAvatar(false) }
   }
 
-  const inputStyle = {
-    background: 'var(--bg-input)',
-    border: '1px solid var(--border-input)',
-    borderRadius: '8px',
-    padding: '9px 12px',
-    fontSize: '13px',
-    color: 'var(--text-primary)',
-    outline: 'none',
-  }
-
-  const btnPrimary = {
-    background: 'var(--text-primary)',
-    color: 'var(--bg)',
-    border: 'none',
-    borderRadius: '8px',
-    padding: '9px 18px',
-    fontSize: '13px',
-    fontWeight: '600',
-    cursor: 'pointer',
+  const handleSendMessage = async () => {
+    if (!subject.trim() || !message.trim()) return
+    setSending(true)
+    setSendError(null)
+    try {
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        {
+          subject: subject.trim(),
+          message: message.trim(),
+          name: displayName || user?.email,
+          time: new Date().toLocaleString(),
+        },
+        EMAILJS_PUBLIC_KEY
+      )
+      setSent(true)
+      setSubject('')
+      setMessage('')
+      setTimeout(() => setSent(false), 4000)
+    } catch (err) {
+      console.error(err)
+      setSendError('Failed to send. Please try again.')
+    }
+    finally { setSending(false) }
   }
 
   if (loading) return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>
@@ -93,70 +118,40 @@ export default function Settings() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '520px' }}>
 
-        {/* Profile section */}
+        {/* Profile */}
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px' }}>
-          <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '20px' }}>Profile</div>
+          <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '16px' }}>Profile</div>
 
           {/* Avatar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-            <div
-              onClick={() => fileRef.current?.click()}
-              style={{
-                width: '72px', height: '72px', borderRadius: '50%',
-                background: 'var(--bg-hover)',
-                border: '2px solid var(--border)',
-                overflow: 'hidden',
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <span style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-muted)' }}>
-                  {displayName?.[0]?.toUpperCase() || '?'}
-                </span>
-              )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', overflow: 'hidden', background: 'var(--bg-hover)', border: '1px solid var(--border)', flexShrink: 0 }}>
+              {avatarUrl
+                ? <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '700', color: 'var(--text-muted)' }}>{displayName?.[0]?.toUpperCase()}</div>
+              }
             </div>
             <div>
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={uploadingAvatar}
-                style={{ ...btnPrimary, fontSize: '12px', padding: '7px 14px', opacity: uploadingAvatar ? 0.6 : 1 }}
-              >
+              <label style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                 {uploadingAvatar ? 'Uploading...' : 'Upload photo'}
-              </button>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>JPG, PNG or GIF · Max 2MB</div>
+                <input type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
+              </label>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>JPG, PNG up to 2MB</div>
             </div>
-            <input ref={fileRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
           </div>
 
-          {/* Display name */}
-          <div style={{ marginBottom: '14px' }}>
-            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Display name</label>
-            <input value={displayName} onChange={e => setDisplayName(e.target.value)} maxLength={30} style={{ ...inputStyle, width: '100%' }} />
-          </div>
-
-          {/* Bio */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bio</label>
-            <textarea
-              value={bio}
-              onChange={e => setBio(e.target.value)}
-              maxLength={160}
-              rows={3}
-              placeholder="Tell other bettors about yourself..."
-              style={{ ...inputStyle, width: '100%', resize: 'vertical', lineHeight: '1.5' }}
-            />
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', textAlign: 'right' }}>{bio.length}/160</div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button onClick={handleSaveProfile} disabled={savingProfile} style={{ ...btnPrimary, opacity: savingProfile ? 0.6 : 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Display name</label>
+              <input value={displayName} onChange={e => setDisplayName(e.target.value)} maxLength={30} style={inputStyle} />
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bio</label>
+              <input value={bio} onChange={e => setBio(e.target.value)} maxLength={100} placeholder="Optional short bio" style={inputStyle} />
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{user?.email}</div>
+            <button onClick={handleSaveProfile} disabled={savingProfile} style={{ ...btnPrimary, opacity: savingProfile ? 0.6 : 1, alignSelf: 'flex-start' }}>
               {savingProfile ? 'Saving...' : savedProfile ? 'Saved!' : 'Save profile'}
             </button>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{user?.email}</div>
           </div>
         </div>
 
@@ -175,6 +170,29 @@ export default function Settings() {
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>Current: 1u = ${Number(unitSize).toFixed(2)}</div>
         </div>
+
+        {/* Contact form */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px' }}>
+          <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px' }}>Report an issue</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>Found a bug or something looks wrong? Send a message directly to the developer.</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Subject</label>
+              <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. Auto-settle not working" style={inputStyle} />
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Message</label>
+              <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Describe the issue..." rows={4}
+                style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit', lineHeight: '1.5' }} />
+            </div>
+            {sendError && <div style={{ fontSize: '12px', color: '#dc2626' }}>{sendError}</div>}
+            <button onClick={handleSendMessage} disabled={sending || !subject.trim() || !message.trim()}
+              style={{ ...btnPrimary, opacity: (sending || !subject.trim() || !message.trim()) ? 0.6 : 1, alignSelf: 'flex-start' }}>
+              {sending ? 'Sending...' : sent ? '✓ Sent!' : 'Send message'}
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
   )

@@ -13,7 +13,12 @@ const UPCOMING_UFC_EVENTS = [
 ]
 
 const BET_TYPES = ['moneyline', 'parlay', 'props']
-const SPORTSBOOKS = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'PointsBet', 'BetRivers', 'ESPN Bet', 'Bet365', 'Kalshi', 'Polymarket', 'Other']
+const SPORTSBOOKS = [
+  'DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'BetRivers', 'ESPN Bet', 'Bet365',
+  'Unibet', 'Betway', 'BetOnline', 'MyBookie', 'Bovada', 'BetUS', 'Heritage Sports',
+  'Pinnacle', 'SportsBetting.ag', 'PointsBet', 'Circa Sports', 'SuperBook',
+  'WynnBET', 'Fanatics', 'Kalshi', 'Polymarket', 'Other',
+]
 const empty = { fight_id: '', bet_type: 'moneyline', pick: '', odds: '', stake_units: '', notes: '', sportsbook: '', confidence: 0, prop_tier: 'fight', prop_fighter: '' }
 const emptyLeg = { fight_id: '', pick: '', odds: '' }
 
@@ -181,7 +186,7 @@ export default function Bets() {
           return `Leg ${i + 1}: ${l.pick} (${Number(l.odds) > 0 ? '+' : ''}${l.odds})${fight ? ` - ${fight.fighter_a} vs ${fight.fighter_b}` : ''}`
         }).join(' | ')
         const bet = {
-          fight_id: null, bet_type: 'parlay',
+          fight_id: null, event_id: selectedEvent?.id || null, bet_type: 'parlay',
           pick: validLegs.map(l => l.pick).join(' + '),
           odds, stake: units * unitSize, stake_units: units,
           potential_payout: potentialUnits * unitSize + units * unitSize,
@@ -203,7 +208,7 @@ export default function Bets() {
       const odds = Number(form.odds)
       const potentialUnits = calcPayoutUnits(units, odds)
       const bet = {
-        fight_id: form.fight_id || null, bet_type: form.bet_type,
+        fight_id: form.fight_id || null, event_id: selectedEvent?.id || null, bet_type: form.bet_type,
         pick: finalPick, odds, stake: units * unitSize, stake_units: units,
         potential_payout: potentialUnits * unitSize + units * unitSize,
         notes: form.notes, sportsbook: form.sportsbook || null, confidence: form.confidence || null,
