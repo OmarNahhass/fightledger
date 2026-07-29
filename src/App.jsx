@@ -8,14 +8,16 @@ import Bets from './pages/Bets'
 import Leaderboard from './pages/Leaderboard'
 import Activity from './pages/Activity'
 import Settings from './pages/Settings'
+import OpenParlays from './pages/OpenParlays'
 
 const navSections = [
   {
     label: 'MENU',
     items: [
       { to: '/leaderboard', label: 'Leaderboard', public: true },
-      { to: '/bets', label: 'My Bets', public: false },
       { to: '/', label: 'Dashboard', public: false },
+      { to: '/bets', label: 'My Bets', public: false },
+      { to: '/open-parlays', label: 'Open Parlays', public: false },
       { to: '/activity', label: 'Activity', public: false },
     ]
   },
@@ -177,6 +179,7 @@ function AppShell() {
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<RequireAuth redirectTo="/leaderboard"><Dashboard /></RequireAuth>} />
             <Route path="/bets" element={<RequireAuth redirectTo="/leaderboard"><Bets /></RequireAuth>} />
+            <Route path="/open-parlays" element={<RequireAuth redirectTo="/leaderboard"><OpenParlays /></RequireAuth>} />
             <Route path="/activity" element={<RequireAuth redirectTo="/leaderboard"><Activity /></RequireAuth>} />
             <Route path="/settings" element={<RequireAuth redirectTo="/leaderboard"><Settings /></RequireAuth>} />
           </Routes>

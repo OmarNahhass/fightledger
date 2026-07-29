@@ -322,3 +322,99 @@ export const getActivityFeed = async (followingIds) => {
   if (error) throw error;
   return data;
 };
+// ── OPEN PARLAYS ─────────────────────────────────────────
+
+export const getOpenParlays = async (userId) => {
+  const { data, error } = await supabase
+    .from("open_parlays")
+    .select("*, open_parlay_legs(*)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+};
+
+export const createOpenParlay = async ({
+  user_id,
+  name,
+  initial_stake,
+  sportsbook,
+}) => {
+  const { data, error } = await supabase
+    .from("open_parlays")
+    .insert([
+      {
+        user_id,
+        name,
+        initial_stake,
+        current_value: initial_stake,
+        sportsbook,
+        status: "open",
+      },
+    ])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const addOpenParlayLeg = async ({
+  parlay_id,
+  leg_order,
+  fight_id,
+  pick,
+  odds,
+  stake_in,
+}) => {
+  const { data, error } = await supabase
+    .from("open_parlay_legs")
+    .insert([
+      {
+        parlay_id,
+        leg_order,
+        fight_id,
+        pick,
+        odds,
+        stake_in,
+        result: "pending",
+      },
+    ])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const settleOpenParlayLeg = async (legId, result, stake_out) => {
+  const { data, error } = await supabase
+    .from("open_parlay_legs")
+    .update({ result, stake_out, settled_at: new Date().toISOString() })
+    .eq("id", legId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const updateOpenParlayValue = async (
+  parlayId,
+  current_value,
+  status,
+) => {
+  const { data, error } = await supabase
+    .from("open_parlays")
+    .update({ current_value, status })
+    .eq("id", parlayId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const deleteOpenParlay = async (parlayId) => {
+  const { error } = await supabase
+    .from("open_parlays")
+    .delete()
+    .eq("id", parlayId);
+  if (error) throw error;
+};
