@@ -13,12 +13,7 @@ const UPCOMING_UFC_EVENTS = [
 ]
 
 const BET_TYPES = ['moneyline', 'parlay', 'props']
-const SPORTSBOOKS = [
-  'DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'BetRivers', 'ESPN Bet', 'Bet365',
-  'Unibet', 'Betway', 'BetOnline', 'MyBookie', 'Bovada', 'BetUS', 'Heritage Sports',
-  'Pinnacle', 'SportsBetting.ag', 'PointsBet', 'Circa Sports', 'SuperBook',
-  'WynnBET', 'Fanatics', 'Kalshi', 'Polymarket', 'Other',
-]
+const SPORTSBOOKS = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'PointsBet', 'BetRivers', 'ESPN Bet', 'Bet365', 'Kalshi', 'Polymarket', 'Other']
 const empty = { fight_id: '', bet_type: 'moneyline', pick: '', odds: '', stake_units: '', notes: '', sportsbook: '', confidence: 0, prop_tier: 'fight', prop_fighter: '' }
 const emptyLeg = { fight_id: '', pick: '', odds: '' }
 
@@ -186,7 +181,7 @@ export default function Bets() {
           return `Leg ${i + 1}: ${l.pick} (${Number(l.odds) > 0 ? '+' : ''}${l.odds})${fight ? ` - ${fight.fighter_a} vs ${fight.fighter_b}` : ''}`
         }).join(' | ')
         const bet = {
-          fight_id: null, event_id: selectedEvent?.id || null, bet_type: 'parlay',
+          fight_id: null, bet_type: 'parlay',
           pick: validLegs.map(l => l.pick).join(' + '),
           odds, stake: units * unitSize, stake_units: units,
           potential_payout: potentialUnits * unitSize + units * unitSize,
@@ -208,7 +203,7 @@ export default function Bets() {
       const odds = Number(form.odds)
       const potentialUnits = calcPayoutUnits(units, odds)
       const bet = {
-        fight_id: form.fight_id || null, event_id: selectedEvent?.id || null, bet_type: form.bet_type,
+        fight_id: form.fight_id || null, bet_type: form.bet_type,
         pick: finalPick, odds, stake: units * unitSize, stake_units: units,
         potential_payout: potentialUnits * unitSize + units * unitSize,
         notes: form.notes, sportsbook: form.sportsbook || null, confidence: form.confidence || null,
@@ -653,16 +648,56 @@ export default function Bets() {
                     return (
                       <div key={bet.id} style={{ padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                            <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{bet.pick}</span>
-                            <span style={resultBadge(bet.result)}>{bet.result}</span>
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>{bet.bet_type}</span>
-                            {bet.sportsbook && <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>{bet.sportsbook}</span>}
-                            {bet.confidence && <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>{'★'.repeat(bet.confidence)}</span>}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{bet.pick}</span>
+                            {bet.result === 'pending'
+                              ? <span style={{ fontSize: '15px' }} title="Pending">⏳</span>
+                              : <span style={resultBadge(bet.result)}>{bet.result}</span>
+                            }
+                            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)', background: 'var(--bg-hover)', padding: '2px 8px', borderRadius: '5px', letterSpacing: '-0.2px' }}>
+                              {Number(bet.odds) > 0 ? '+' : ''}{bet.odds}
+                            </span>
+                            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)', background: 'var(--bg-hover)', padding: '2px 8px', borderRadius: '5px' }}>
+                              {bet.stake_units}u
+                            </span>
                           </div>
-                          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                            {Number(bet.odds) > 0 ? '+' : ''}{bet.odds} · {bet.stake_units}u (${Number(bet.stake).toFixed(2)})
-                            {bet.fighter_a && bet.fighter_b && ` · ${bet.fighter_a} vs ${bet.fighter_b}`}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            {bet.sportsbook && (
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>
+                                <img
+                                  src={`https://www.google.com/s2/favicons?domain=${({
+                                    'DraftKings': 'draftkings.com',
+                                    'FanDuel': 'fanduel.com',
+                                    'BetMGM': 'betmgm.com',
+                                    'Caesars': 'caesars.com',
+                                    'BetRivers': 'betrivers.com',
+                                    'ESPN Bet': 'espnbet.com',
+                                    'Bet365': 'bet365.com',
+                                    'Unibet': 'unibet.com',
+                                    'Betway': 'betway.com',
+                                    'BetOnline': 'betonline.ag',
+                                    'MyBookie': 'mybookie.ag',
+                                    'Bovada': 'bovada.lv',
+                                    'BetUS': 'betus.com',
+                                    'Heritage Sports': 'heritagesports.eu',
+                                    'Pinnacle': 'pinnacle.com',
+                                    'SportsBetting.ag': 'sportsbetting.ag',
+                                    'PointsBet': 'pointsbet.com',
+                                    'Circa Sports': 'circasports.com',
+                                    'SuperBook': 'superbook.com',
+                                    'WynnBET': 'wynnbet.com',
+                                    'Fanatics': 'fanatics.com',
+                                    'Kalshi': 'kalshi.com',
+                                    'Polymarket': 'polymarket.com',
+                                  })[bet.sportsbook] || 'google.com'}&sz=16`}
+                                  alt={bet.sportsbook}
+                                  style={{ width: '12px', height: '12px', borderRadius: '2px' }}
+                                  onError={e => e.target.style.display = 'none'}
+                                />
+                                <span style={{ fontWeight: '700' }}>{bet.sportsbook}</span>
+                              </span>
+                            )}
+                            {bet.confidence && <span style={{ fontSize: '11px', color: '#f59e0b', background: '#292524', padding: '1px 6px', borderRadius: '4px', letterSpacing: '1px' }}>{'★'.repeat(bet.confidence)}</span>}
                           </div>
                           {bet.bet_type === 'parlay' && bet.notes && (
                             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px', maxWidth: '400px' }}>{bet.notes}</div>

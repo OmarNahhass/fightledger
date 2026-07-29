@@ -14,10 +14,10 @@ const navSections = [
   {
     label: 'MENU',
     items: [
-      { to: '/leaderboard', label: 'Leaderboard', public: true },
       { to: '/', label: 'Dashboard', public: false },
       { to: '/bets', label: 'My Bets', public: false },
       { to: '/open-parlays', label: 'Open Parlays', public: false },
+      { to: '/leaderboard', label: 'Leaderboard', public: true },
       { to: '/activity', label: 'Activity', public: false },
     ]
   },
