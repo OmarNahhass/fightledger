@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, NavLink, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import { useTheme } from './lib/ThemeContext'
 import Login from './pages/Login'
@@ -9,6 +9,14 @@ import Leaderboard from './pages/Leaderboard'
 import Activity from './pages/Activity'
 import Settings from './pages/Settings'
 import OpenParlays from './pages/OpenParlays'
+
+const navItems = [
+  { to: '/', label: 'Dashboard', icon: '📊', public: false },
+  { to: '/bets', label: 'My Bets', icon: '🥊', public: false },
+  { to: '/open-parlays', label: 'Parlays', icon: '🎰', public: false },
+  { to: '/leaderboard', label: 'Leaderboard', icon: '🏆', public: true },
+  { to: '/activity', label: 'Activity', icon: '📡', public: false },
+]
 
 const navSections = [
   {
@@ -29,13 +37,50 @@ const navSections = [
   },
 ]
 
+function BottomNav() {
+  const { isLoggedIn } = useAuth()
+  const location = useLocation()
+
+  const visibleItems = isLoggedIn ? navItems : navItems.filter(i => i.public)
+
+  return (
+    <nav className="bottom-nav">
+      {visibleItems.map(({ to, label, icon }) => {
+        const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
+        return (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/'}
+            className={({ isActive }) => `bottom-nav-item${isActive ? ' active' : ''}`}
+            style={{ color: isActive ? 'var(--text-primary)' : 'var(--nav-inactive)' }}
+          >
+            <span className="bottom-nav-icon">{icon}</span>
+            <span className="bottom-nav-label" style={{ color: isActive ? 'var(--text-primary)' : 'var(--nav-inactive)' }}>{label}</span>
+          </NavLink>
+        )
+      })}
+      {isLoggedIn && (
+        <NavLink
+          to="/settings"
+          end
+          className={({ isActive }) => `bottom-nav-item${isActive ? ' active' : ''}`}
+        >
+          <span className="bottom-nav-icon">⚙️</span>
+          <span className="bottom-nav-label" style={{ color: location.pathname === '/settings' ? 'var(--text-primary)' : 'var(--nav-inactive)' }}>Settings</span>
+        </NavLink>
+      )}
+    </nav>
+  )
+}
+
 function Sidebar() {
   const { user, signOut, isLoggedIn } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const isDark = theme === 'dark'
 
   return (
-    <aside style={{
+    <aside className="sidebar" style={{
       width: '220px',
       background: 'var(--sidebar-bg)',
       borderRight: '1px solid var(--sidebar-border)',
@@ -152,7 +197,7 @@ function RequireAuth({ children, redirectTo = '/leaderboard' }) {
     }
   }, [loading, isLoggedIn, redirectTo])
 
-  if (loading) return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>
+  if (loading) return <div style={{ color: 'var(--text-muted)', fontSize: '13px', padding: '20px' }}>Loading...</div>
   if (!isLoggedIn) return null
 
   return children
@@ -173,7 +218,7 @@ function AppShell() {
     <BrowserRouter>
       <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
         <Sidebar />
-        <main style={{ flex: 1, padding: '48px 56px', overflowY: 'auto', maxWidth: '960px' }}>
+        <main className="main-content" style={{ flex: 1, padding: '48px 56px', overflowY: 'auto', maxWidth: '960px' }}>
           <Routes>
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/login" element={<Login />} />
@@ -184,6 +229,7 @@ function AppShell() {
             <Route path="/settings" element={<RequireAuth redirectTo="/leaderboard"><Settings /></RequireAuth>} />
           </Routes>
         </main>
+        <BottomNav />
       </div>
     </BrowserRouter>
   )

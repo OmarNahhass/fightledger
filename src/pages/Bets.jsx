@@ -704,7 +704,7 @@ export default function Bets() {
                           )}
                         </div>
                         {bet.result === 'pending' ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div className='bet-settle-btns' style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginRight: '4px' }}>+{calcPayoutUnits(bet.stake_units, bet.odds).toFixed(2)}u</span>
                             <button onClick={() => handleSettle(bet.id, 'win', bet)} disabled={settling === bet.id} style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Win</button>
                             <button onClick={() => handleSettle(bet.id, 'loss', bet)} disabled={settling === bet.id} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Loss</button>

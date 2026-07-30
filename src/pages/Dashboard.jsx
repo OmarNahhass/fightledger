@@ -131,7 +131,7 @@ export default function Dashboard() {
       ) : (
         <>
           {/* Stat cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', className: 'stat-grid-4', gap: '12px', marginBottom: '20px' }}>
             <StatCard label="Units profit" value={`${profit >= 0 ? '+' : ''}${profit.toFixed(2)}u`} sub={`$${(profit * unitSize).toFixed(2)}`} color={profitColor} />
             <StatCard label="ROI" value={`${roi >= 0 ? '+' : ''}${roi}%`} sub={`${stats.totalUnitsStaked}u staked`} color={roiColor} />
             <StatCard label="Win rate" value={`${overallStats.winRate}%`} sub={`${overallStats.wins}W / ${overallStats.losses}L`} color={overallStats.winRate >= 50 ? '#16a34a' : 'var(--text-primary)'} />
@@ -144,7 +144,7 @@ export default function Dashboard() {
           {/* ROI by bet type */}
           <div style={{ marginTop: '20px' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px', fontWeight: '600' }}>ROI by bet type</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+            <div className='roi-grid-3' style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
               <ROICard
                 label="Moneyline"
                 profit={roiByType.moneyline.profit}
