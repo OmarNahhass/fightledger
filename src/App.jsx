@@ -9,9 +9,10 @@ import Leaderboard from './pages/Leaderboard'
 import Activity from './pages/Activity'
 import Settings from './pages/Settings'
 import OpenParlays from './pages/OpenParlays'
+import Landing from './pages/Landing'
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: '📊', public: false },
+  { to: '/dashboard', label: 'Dashboard', icon: '📊', public: false },
   { to: '/bets', label: 'My Bets', icon: '🥊', public: false },
   { to: '/open-parlays', label: 'Parlays', icon: '🎰', public: false },
   { to: '/leaderboard', label: 'Leaderboard', icon: '🏆', public: true },
@@ -22,7 +23,7 @@ const navSections = [
   {
     label: 'MENU',
     items: [
-      { to: '/', label: 'Dashboard', public: false },
+      { to: '/dashboard', label: 'Dashboard', public: false },
       { to: '/bets', label: 'My Bets', public: false },
       { to: '/open-parlays', label: 'Open Parlays', public: false },
       { to: '/leaderboard', label: 'Leaderboard', public: true },
@@ -51,7 +52,7 @@ function BottomNav() {
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end={to === '/dashboard'}
             className={({ isActive }) => `bottom-nav-item${isActive ? ' active' : ''}`}
             style={{ color: isActive ? 'var(--text-primary)' : 'var(--nav-inactive)' }}
           >
@@ -116,7 +117,7 @@ function Sidebar() {
                   <NavLink
                     key={to}
                     to={to}
-                    end={to === '/'}
+                    end={to === '/dashboard'}
                     style={({ isActive }) => ({
                       display: 'flex',
                       alignItems: 'center',
@@ -187,7 +188,7 @@ function Sidebar() {
   )
 }
 
-function RequireAuth({ children, redirectTo = '/leaderboard' }) {
+function RequireAuth({ children, redirectTo = '/login' }) {
   const { isLoggedIn, loading } = useAuth()
   const navigate = useNavigate()
 
@@ -222,11 +223,12 @@ function AppShell() {
           <Routes>
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={<RequireAuth redirectTo="/leaderboard"><Dashboard /></RequireAuth>} />
-            <Route path="/bets" element={<RequireAuth redirectTo="/leaderboard"><Bets /></RequireAuth>} />
-            <Route path="/open-parlays" element={<RequireAuth redirectTo="/leaderboard"><OpenParlays /></RequireAuth>} />
-            <Route path="/activity" element={<RequireAuth redirectTo="/leaderboard"><Activity /></RequireAuth>} />
-            <Route path="/settings" element={<RequireAuth redirectTo="/leaderboard"><Settings /></RequireAuth>} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/dashboard" element={<RequireAuth redirectTo="/login"><Dashboard /></RequireAuth>} />
+            <Route path="/bets" element={<RequireAuth redirectTo="/login"><Bets /></RequireAuth>} />
+            <Route path="/open-parlays" element={<RequireAuth redirectTo="/login"><OpenParlays /></RequireAuth>} />
+            <Route path="/activity" element={<RequireAuth redirectTo="/login"><Activity /></RequireAuth>} />
+            <Route path="/settings" element={<RequireAuth redirectTo="/login"><Settings /></RequireAuth>} />
           </Routes>
         </main>
         <BottomNav />

@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { getBets, getEvents, createEvent, getFightsByEvent, createFight, createBet, updateBetResult, deleteBet, getUnitSize } from '../lib/db'
+import { getBets, getEvents, createEvent, getFightsByEvent, createFight, createBet, updateBetResult, deleteBet, getUnitSize, setUnitSize as saveUnitSize } from '../lib/db'
 import { useAuth } from '../lib/AuthContext'
 import { getFightsByDate } from '../lib/mmaApi'
 import { exportBetsToCSV } from '../lib/exportCSV'
@@ -97,6 +97,9 @@ export default function Bets() {
   const [settling, setSettling] = useState(null)
   const [deleting, setDeleting] = useState(null)
   const [parlayLegs, setParlayLegs] = useState([{ ...emptyLeg }, { ...emptyLeg }])
+  const [editingUnit, setEditingUnit] = useState(false)
+  const [unitInput, setUnitInput] = useState('')
+  const [savingUnit, setSavingUnit] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -262,7 +265,37 @@ export default function Bets() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.4px', marginBottom: '4px' }}>Bets</h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>1 unit = ${unitSize.toFixed(2)}</p>
+          {editingUnit ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>1u = $</span>
+              <input
+                type="number"
+                value={unitInput}
+                onChange={e => setUnitInput(e.target.value)}
+                style={{ width: '70px', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '6px', padding: '4px 8px', fontSize: '13px', color: 'var(--text-primary)', outline: 'none' }}
+                autoFocus
+              />
+              <button
+                onClick={async () => {
+                  if (!unitInput || isNaN(unitInput)) return
+                  setSavingUnit(true)
+                  try { await saveUnitSize(Number(unitInput)); setUnitSize(Number(unitInput)); setEditingUnit(false) }
+                  catch (err) { console.error(err) }
+                  finally { setSavingUnit(false) }
+                }}
+                disabled={savingUnit}
+                style={{ background: 'var(--text-primary)', color: 'var(--bg)', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
+                {savingUnit ? '...' : 'Save'}
+              </button>
+              <button onClick={() => setEditingUnit(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '12px' }}>Cancel</button>
+            </div>
+          ) : (
+            <button onClick={() => { setEditingUnit(true); setUnitInput(String(unitSize)) }}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>1 unit = ${unitSize.toFixed(2)} <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>✏️</span></p>
+            </button>
+          )}
         </div>
         {!step && (
           <div style={{ display: 'flex', gap: '8px' }}>
