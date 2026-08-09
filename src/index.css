@@ -39,6 +39,11 @@
   --nav-inactive: #444;
 }
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 body {
   background: var(--bg);
   color: var(--text-primary);
@@ -95,40 +100,29 @@ input[type="number"]::-webkit-outer-spin-button {
 
   .bottom-nav-item {
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
     flex: 1;
-    padding: 8px 4px;
+    padding: 10px 4px;
     text-decoration: none;
     border-radius: 10px;
     transition: all 0.15s;
     min-width: 0;
   }
 
-  .bottom-nav-icon {
-    font-size: 20px;
-    line-height: 1;
-  }
-
   .bottom-nav-label {
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--nav-inactive);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 60px;
+    max-width: 100%;
     text-align: center;
   }
 
   .bottom-nav-item.active .bottom-nav-label {
     color: var(--text-primary);
-  }
-
-  .bottom-nav-item.active .bottom-nav-icon {
-    transform: scale(1.1);
   }
 
   /* Mobile card grid fixes */

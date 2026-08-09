@@ -12,11 +12,11 @@ import OpenParlays from './pages/OpenParlays'
 import Landing from './pages/Landing'
 
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: '📊', public: false },
-  { to: '/bets', label: 'My Bets', icon: '🥊', public: false },
-  { to: '/open-parlays', label: 'Parlays', icon: '🎰', public: false },
-  { to: '/leaderboard', label: 'Leaderboard', icon: '🏆', public: true },
-  { to: '/activity', label: 'Activity', icon: '📡', public: false },
+  { to: '/dashboard', label: 'Dashboard', public: false },
+  { to: '/bets', label: 'My Bets', public: false },
+  { to: '/open-parlays', label: 'Parlays', public: false },
+  { to: '/leaderboard', label: 'Leaderboard', public: true },
+  { to: '/activity', label: 'Activity', public: false },
 ]
 
 const navSections = [
@@ -46,7 +46,7 @@ function BottomNav() {
 
   return (
     <nav className="bottom-nav">
-      {visibleItems.map(({ to, label, icon }) => {
+      {visibleItems.map(({ to, label }) => {
         const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
         return (
           <NavLink
@@ -56,7 +56,6 @@ function BottomNav() {
             className={({ isActive }) => `bottom-nav-item${isActive ? ' active' : ''}`}
             style={{ color: isActive ? 'var(--text-primary)' : 'var(--nav-inactive)' }}
           >
-            <span className="bottom-nav-icon">{icon}</span>
             <span className="bottom-nav-label" style={{ color: isActive ? 'var(--text-primary)' : 'var(--nav-inactive)' }}>{label}</span>
           </NavLink>
         )
@@ -67,7 +66,6 @@ function BottomNav() {
           end
           className={({ isActive }) => `bottom-nav-item${isActive ? ' active' : ''}`}
         >
-          <span className="bottom-nav-icon">⚙️</span>
           <span className="bottom-nav-label" style={{ color: location.pathname === '/settings' ? 'var(--text-primary)' : 'var(--nav-inactive)' }}>Settings</span>
         </NavLink>
       )}

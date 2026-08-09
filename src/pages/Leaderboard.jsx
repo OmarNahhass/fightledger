@@ -148,9 +148,9 @@ export default function Leaderboard() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {/* Header row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 80px 80px 80px 100px', gap: '12px', padding: '0 20px', marginBottom: '4px' }}>
+          <div className='leaderboard-grid' style={{ display: 'grid', gridTemplateColumns: '40px 1fr 80px 80px 80px 100px', gap: '12px', padding: '0 20px', marginBottom: '4px' }}>
             {['#', 'Bettor', 'Bets', 'ROI', 'Profit', ''].map((h, i) => (
-              <div key={i} style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i > 1 ? 'right' : 'left' }}>{h}</div>
+              <div key={i} className={i === 2 || i === 5 ? 'leaderboard-hide-mobile' : ''} style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i > 1 ? 'right' : 'left' }}>{h}</div>
             ))}
           </div>
 
@@ -159,7 +159,7 @@ export default function Leaderboard() {
             const isFollowing = followingIds.includes(u.userId)
             const rankColor = i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#d97706' : 'var(--text-muted)'
             return (
-              <div key={u.userId} style={{
+              <div key={u.userId} className='leaderboard-grid' style={{
                 background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px',
                 padding: '14px 20px', display: 'grid',
                 gridTemplateColumns: '40px 1fr 80px 80px 80px 100px',
@@ -173,14 +173,14 @@ export default function Leaderboard() {
                   </div>
                   {u.pending > 0 && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>{u.pending} pending</div>}
                 </div>
-                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'right' }}>{u.settledCount}</div>
+                <div className='leaderboard-hide-mobile' style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'right' }}>{u.settledCount}</div>
                 <div style={{ fontSize: '13px', fontWeight: '600', color: Number(u.roi) >= 0 ? '#16a34a' : '#dc2626', textAlign: 'right' }}>
                   {Number(u.roi) >= 0 ? '+' : ''}{u.roi}%
                 </div>
                 <div style={{ fontSize: '14px', fontWeight: '700', color: u.unitsProfit >= 0 ? '#16a34a' : '#dc2626', textAlign: 'right' }}>
                   {u.unitsProfit >= 0 ? '+' : ''}{u.unitsProfit.toFixed(2)}u
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div className='leaderboard-hide-mobile' style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   {isLoggedIn && !isMe && (
                     <button onClick={() => handleToggleFollow(u.userId)} disabled={followBusy === u.userId}
                       style={{

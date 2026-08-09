@@ -131,7 +131,7 @@ export default function Dashboard() {
       ) : (
         <>
           {/* Stat cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', className: 'stat-grid-4', gap: '12px', marginBottom: '20px' }}>
+          <div className='stat-grid-4' style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
             <StatCard label="Units profit" value={`${profit >= 0 ? '+' : ''}${profit.toFixed(2)}u`} sub={`$${(profit * unitSize).toFixed(2)}`} color={profitColor} />
             <StatCard label="ROI" value={`${roi >= 0 ? '+' : ''}${roi}%`} sub={`${stats.totalUnitsStaked}u staked`} color={roiColor} />
             <StatCard label="Win rate" value={`${overallStats.winRate}%`} sub={`${overallStats.wins}W / ${overallStats.losses}L`} color={overallStats.winRate >= 50 ? '#16a34a' : 'var(--text-primary)'} />
