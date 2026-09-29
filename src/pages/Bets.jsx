@@ -66,8 +66,8 @@ const calcParlayOdds = (legs) => {
 
 const resultBadge = (result) => {
   const base = { padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }
-  if (result === 'win') return { ...base, color: '#16a34a', background: '#f0fdf4' }
-  if (result === 'loss') return { ...base, color: '#dc2626', background: '#fef2f2' }
+  if (result === 'win') return { ...base, color: '#16a34a', background: '#dcfce7', borderRadius: '999px', border: 'none' }
+  if (result === 'loss') return { ...base, color: '#dc2626', background: '#fee2e2', borderRadius: '999px', border: 'none' }
   if (result === 'push') return { ...base, color: '#d97706', background: '#fffbeb' }
   if (result === 'void') return { ...base, color: '#7c3aed', background: '#f5f3ff' }
   return { ...base, color: 'var(--text-secondary)', background: 'var(--bg-hover)' }
@@ -300,9 +300,9 @@ export default function Bets() {
         {!step && (
           <div style={{ display: 'flex', gap: '8px' }}>
             {bets.length > 0 && (
-              <button onClick={() => exportBetsToCSV(bets)} style={{ ...btnGhost, fontSize: '12px', padding: '7px 14px' }}>Export CSV</button>
+              <button onClick={() => exportBetsToCSV(bets)} style={{ ...btnGhost, fontSize: '12px', padding: '7px 14px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}>Export CSV</button>
             )}
-            <button style={btnPrimary} onClick={() => setStep('pick-event')}>+ Add bet</button>
+            <button style={{ ...btnPrimary, background: 'var(--accent)', color: 'white', borderRadius: '8px', fontWeight: '600' }} onClick={() => setStep('pick-event')}>+ Add bet</button>
           </div>
         )}
       </div>
@@ -651,7 +651,7 @@ export default function Bets() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {groupedBets.map(group => (
-                <div key={group.eventName} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+                <div key={group.eventName} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: '3px solid var(--accent)', borderRadius: '12px', overflow: 'hidden' }}>
                   <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }}>{group.eventName}</div>
@@ -687,10 +687,10 @@ export default function Bets() {
                               ? <span style={{ fontSize: '15px' }} title="Pending">⏳</span>
                               : <span style={resultBadge(bet.result)}>{bet.result}</span>
                             }
-                            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)', background: 'var(--bg-hover)', padding: '2px 8px', borderRadius: '5px', letterSpacing: '-0.2px' }}>
+                            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)', background: 'var(--bg-hover)', padding: '2px 8px', borderRadius: '6px', letterSpacing: '-0.2px' }}>
                               {Number(bet.odds) > 0 ? '+' : ''}{bet.odds}
                             </span>
-                            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)', background: 'var(--bg-hover)', padding: '2px 8px', borderRadius: '5px' }}>
+                            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)', background: 'var(--bg-hover)', padding: '2px 8px', borderRadius: '6px' }}>
                               {bet.stake_units}u
                             </span>
                           </div>

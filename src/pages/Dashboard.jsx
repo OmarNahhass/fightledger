@@ -16,9 +16,9 @@ const calcProfitUnits = (units, odds, result) => {
 }
 
 const StatCard = ({ label, value, sub, color = 'var(--text-primary)' }) => (
-  <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px 22px' }}>
+  <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderTop: '3px solid var(--accent)', borderRadius: '12px', padding: '20px 22px' }}>
     <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px', fontWeight: '600' }}>{label}</div>
-    <div style={{ fontSize: '26px', fontWeight: '700', color, letterSpacing: '-0.5px', lineHeight: 1 }}>{value}</div>
+    <div style={{ fontSize: '28px', fontWeight: '700', color, letterSpacing: '-0.5px', lineHeight: 1 }}>{value}</div>
     {sub && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>{sub}</div>}
   </div>
 )

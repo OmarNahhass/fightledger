@@ -91,7 +91,9 @@ function Sidebar() {
       transition: 'background 0.2s',
     }}>
       <div style={{ padding: '0 8px', marginBottom: '32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>FightLedger</div>
+        <div style={{ fontSize: '22px', fontWeight: '800', letterSpacing: '-0.3px' }}>
+          <span style={{ color: 'var(--text-primary)' }}>Fight</span><span style={{ color: 'var(--accent)' }}>Ledger</span>
+        </div>
         <button
           onClick={toggleTheme}
           title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -107,7 +109,7 @@ function Sidebar() {
           if (!visibleItems.length) return null
           return (
             <div key={label}>
-              <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.8px', padding: '0 8px', marginBottom: '6px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '600', color: '#6b7280', letterSpacing: '0.08em', padding: '0 8px', marginBottom: '6px' }}>
                 {label}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
@@ -117,34 +119,18 @@ function Sidebar() {
                     to={to}
                     end={to === '/dashboard'}
                     style={({ isActive }) => ({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '8px',
-                      borderRadius: '8px',
+                      display: 'block',
+                      padding: '8px 10px',
+                      borderLeft: `3px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
                       fontSize: '14px',
                       textDecoration: 'none',
                       color: isActive ? 'var(--text-primary)' : 'var(--nav-inactive)',
-                      background: isActive ? 'var(--nav-active-bg)' : 'transparent',
+                      background: 'transparent',
                       fontWeight: isActive ? '600' : '400',
                       transition: 'all 0.15s',
                     })}
                   >
-                    {({ isActive }) => (
-                      <>
-                        <div style={{
-                          width: '28px', height: '28px', borderRadius: '6px',
-                          background: isActive ? 'var(--nav-active-icon)' : 'var(--bg-hover)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '11px',
-                          color: isActive ? 'var(--nav-active-icon-text)' : 'var(--text-secondary)',
-                          flexShrink: 0, fontWeight: '700',
-                        }}>
-                          {itemLabel[0]}
-                        </div>
-                        {itemLabel}
-                      </>
-                    )}
+                    {itemLabel}
                   </NavLink>
                 ))}
               </div>
