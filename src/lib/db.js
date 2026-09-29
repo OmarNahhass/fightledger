@@ -215,6 +215,17 @@ export const getPendingBetsWithFights = async () => {
   return data;
 };
 
+export const getPendingParlays = async () => {
+  const { data, error } = await supabase
+    .from("bets")
+    .select("*")
+    .eq("result", "pending")
+    .eq("bet_type", "parlay")
+    .is("fight_id", null);
+  if (error) throw error;
+  return data;
+};
+
 // ── BANKROLL ─────────────────────────────────────────
 
 export const getBankrollHistory = async () => {
@@ -322,6 +333,7 @@ export const getActivityFeed = async (followingIds) => {
   if (error) throw error;
   return data;
 };
+
 // ── OPEN PARLAYS ─────────────────────────────────────────
 
 export const getOpenParlays = async (userId) => {
