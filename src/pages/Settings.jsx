@@ -131,11 +131,11 @@ export default function Settings() {
               }
             </div>
             <div>
-              <label style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+              <label style={{ display: 'inline-block', background: 'var(--bg-hover)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                 {uploadingAvatar ? 'Uploading...' : 'Upload photo'}
                 <input type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
               </label>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>JPG, PNG up to 2MB</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>JPG, PNG up to 2MB</div>
             </div>
           </div>
 

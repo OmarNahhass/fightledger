@@ -20,7 +20,7 @@
   --nav-active-icon: #1a1a1a;
   --nav-active-icon-text: #ffffff;
   --nav-inactive: #6b7280;
-  --bottom-nav-height: 64px;
+  --topbar-height: 60px;
 }
 
 [data-theme="dark"] {
@@ -44,7 +44,8 @@
 }
 
 html, body {
-  overflow-x: hidden;
+  /* clip (not hidden) so body does not become a scroll container, which breaks the sticky sidebar */
+  overflow-x: clip;
   max-width: 100%;
 }
 
@@ -70,63 +71,211 @@ input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
 }
 
-/* ── MOBILE ──────────────────────────────────── */
+/* ── SIDEBAR / NAV ───────────────────────────── */
 
-.bottom-nav {
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-link:hover {
+  background: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+.mobile-topbar,
+.sidebar-backdrop,
+.sidebar-close-btn {
   display: none;
 }
 
+/* Page header: title on the left, actions on the right; wraps when narrow */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin-bottom: 24px;
+}
+
+.page-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Bet rows */
+.bet-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.bet-row-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.bet-row-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-bottom: 6px;
+}
+
+.bet-pick {
+  overflow-wrap: anywhere;
+}
+
+.bet-row-side {
+  flex-shrink: 0;
+}
+
+.bet-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.bet-group-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* Leaderboard */
+.leaderboard-name {
+  min-width: 0;
+}
+
+.leaderboard-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.leaderboard-follow-mobile {
+  display: none;
+}
+
+/* ── MOBILE ──────────────────────────────────── */
+
 @media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .mobile-topbar {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    height: var(--topbar-height);
+    padding: 0 16px;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--sidebar-bg);
+    border-bottom: 1px solid var(--sidebar-border);
+  }
+
+  .mobile-topbar > div {
+    font-size: 20px !important;
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .mobile-menu-icon {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .mobile-menu-icon span {
+    display: block;
+    width: 16px;
+    height: 2px;
+    border-radius: 1px;
+    background: currentColor;
+  }
+
+  /* Sidebar becomes a slide-in drawer */
   .sidebar {
-    display: none !important;
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: 100%;
+    min-height: 0 !important;
+    width: min(300px, 85vw) !important;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease, background 0.2s !important;
+    box-shadow: none;
+    padding-bottom: calc(28px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.25);
+  }
+
+  .sidebar-link {
+    font-size: 16px !important;
+    padding: 13px 14px !important;
+  }
+
+  .sidebar-close-btn {
+    display: block;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 26px;
+    line-height: 1;
+    padding: 0 4px;
+    cursor: pointer;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .sidebar-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .main-content {
-    padding: 20px 16px calc(var(--bottom-nav-height) + 20px) !important;
+    padding: 20px 16px calc(32px + env(safe-area-inset-bottom)) !important;
     max-width: 100% !important;
-  }
-
-  .bottom-nav {
-    display: flex;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: var(--bottom-nav-height);
-    background: var(--sidebar-bg);
-    border-top: 1px solid var(--sidebar-border);
-    z-index: 100;
-    align-items: center;
-    justify-content: space-around;
-    padding: 0 8px;
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  .bottom-nav-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-    padding: 10px 4px;
-    text-decoration: none;
-    border-radius: 10px;
-    transition: all 0.15s;
-    min-width: 0;
-  }
-
-  .bottom-nav-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--nav-inactive);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-    text-align: center;
-  }
-
-  .bottom-nav-item.active .bottom-nav-label {
-    color: var(--text-primary);
   }
 
   /* Mobile card grid fixes */
@@ -144,20 +293,51 @@ input[type="number"]::-webkit-outer-spin-button {
 
   .bet-settle-btns {
     flex-wrap: wrap;
-    gap: 4px !important;
+    gap: 6px !important;
   }
 
   .bet-settle-btns button {
-    padding: 6px 8px !important;
-    font-size: 11px !important;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
   }
 
-  /* Leaderboard mobile */
+  /* Bet rows: stack details above result / actions */
+  .bet-group-header,
+  .bet-row {
+    padding: 14px 16px !important;
+  }
+
+  .bet-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .bet-row-side {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    text-align: left !important;
+  }
+
+  .bet-row-side.bet-settle-btns {
+    justify-content: flex-start;
+  }
+
+  /* Leaderboard */
   .leaderboard-grid {
-    grid-template-columns: 30px 1fr 60px 70px !important;
+    grid-template-columns: 28px minmax(0, 1fr) 64px 72px !important;
+    gap: 10px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
   }
 
   .leaderboard-hide-mobile {
     display: none !important;
+  }
+
+  .leaderboard-follow-mobile {
+    display: inline-block;
+    margin-top: 6px;
   }
 }

@@ -98,7 +98,7 @@ export default function Leaderboard() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
+      <div className="page-header">
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.4px', marginBottom: '4px' }}>Leaderboard</h1>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Ranked by units profit</p>
@@ -122,7 +122,7 @@ export default function Leaderboard() {
       </div>
 
       {/* Period filter */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
         {PERIODS.map(({ key, label }) => (
           <button key={key} onClick={() => setPeriod(key)} style={{
             padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600',
@@ -166,12 +166,24 @@ export default function Leaderboard() {
                 gap: '12px', alignItems: 'center',
               }}>
                 <div style={{ fontSize: '15px', fontWeight: '700', color: rankColor }}>{i + 1}</div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{u.name}</span>
-                    {isMe && <span style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px', fontWeight: '600' }}>YOU</span>}
+                <div className="leaderboard-name">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                    <span className="leaderboard-name-text" title={u.name} style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{u.name}</span>
+                    {isMe && <span style={{ flexShrink: 0, fontSize: '10px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px', fontWeight: '600' }}>YOU</span>}
                   </div>
                   {u.pending > 0 && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>{u.pending} pending</div>}
+                  {isLoggedIn && !isMe && (
+                    <button className="leaderboard-follow-mobile" onClick={() => handleToggleFollow(u.userId)} disabled={followBusy === u.userId}
+                      style={{
+                        padding: '5px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600',
+                        cursor: 'pointer', border: 'none',
+                        background: isFollowing ? 'var(--bg-hover)' : 'var(--text-primary)',
+                        color: isFollowing ? 'var(--text-secondary)' : 'var(--bg)',
+                        opacity: followBusy === u.userId ? 0.5 : 1,
+                      }}>
+                      {followBusy === u.userId ? '...' : isFollowing ? 'Following' : '+ Follow'}
+                    </button>
+                  )}
                 </div>
                 <div className='leaderboard-hide-mobile' style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'right' }}>{u.settledCount}</div>
                 <div style={{ fontSize: '13px', fontWeight: '600', color: Number(u.roi) >= 0 ? '#16a34a' : '#dc2626', textAlign: 'right' }}>

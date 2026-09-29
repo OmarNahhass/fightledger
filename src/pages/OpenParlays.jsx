@@ -168,7 +168,7 @@ export default function OpenParlays() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
+      <div className="page-header">
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.4px', marginBottom: '4px' }}>Open Parlays</h1>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Compounding parlays — available on BetOnline, MyBookie, Bovada, BetUS, SportsBetting.ag</p>
@@ -181,7 +181,7 @@ export default function OpenParlays() {
       {showNewForm && (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
           <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '16px' }}>Start a new open parlay</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
             <div>
               <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Name (optional)</label>
               <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. UFC 330 Open Parlay" style={inputStyle} />

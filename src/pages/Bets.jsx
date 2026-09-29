@@ -262,7 +262,7 @@ export default function Bets() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
+      <div className="page-header">
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.4px', marginBottom: '4px' }}>Bets</h1>
           {editingUnit ? (
@@ -298,7 +298,7 @@ export default function Bets() {
           )}
         </div>
         {!step && (
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="page-header-actions">
             {bets.length > 0 && (
               <button onClick={() => exportBetsToCSV(bets)} style={{ ...btnGhost, fontSize: '12px', padding: '7px 14px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}>Export CSV</button>
             )}
@@ -437,7 +437,7 @@ export default function Bets() {
                   )}
                 </div>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+              <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
                 <div>
                   <label style={labelStyle}>Stake (units) *</label>
                   <input value={form.stake_units} onChange={e => setForm(f => ({ ...f, stake_units: e.target.value }))} placeholder={`e.g. 1 = $${unitSize}`} style={inputStyle} />
@@ -465,7 +465,7 @@ export default function Bets() {
             </div>
 
           ) : isProps ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={labelStyle}>Fight</label>
                 <select value={form.fight_id} onChange={e => setForm(f => ({ ...f, fight_id: e.target.value, pick: '', prop_fighter: '' }))} style={{ ...selectStyle, opacity: fights.length ? 1 : 0.5 }}>
@@ -566,7 +566,7 @@ export default function Bets() {
             </div>
 
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
               <div>
                 <label style={labelStyle}>Fight</label>
                 <select value={form.fight_id} onChange={e => { setForm(f => ({ ...f, fight_id: e.target.value, pick: '' })); setCustomPick(false) }} style={{ ...selectStyle, opacity: fights.length ? 1 : 0.5 }}>
@@ -652,7 +652,7 @@ export default function Bets() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {groupedBets.map(group => (
                 <div key={group.eventName} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: '3px solid var(--accent)', borderRadius: '12px', overflow: 'hidden' }}>
-                  <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div className="bet-group-header" style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
                     <div>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }}>{group.eventName}</div>
                       {group.eventDate && (
@@ -661,7 +661,7 @@ export default function Bets() {
                         </div>
                       )}
                     </div>
-                    <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    <div className="bet-group-stats">
                       <span>{group.bets.filter(b => b.result === 'win').length}W</span>
                       <span>{group.bets.filter(b => b.result === 'loss').length}L</span>
                       <span>{group.bets.filter(b => b.result === 'pending').length} pending</span>
@@ -679,10 +679,10 @@ export default function Bets() {
                     const profitUnits = bet.result === 'win' ? calcPayoutUnits(bet.stake_units, bet.odds) : bet.result === 'loss' ? -Number(bet.stake_units) : 0
                     const isLast = i === group.bets.length - 1
                     return (
-                      <div key={bet.id} style={{ padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                            <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{bet.pick}</span>
+                      <div key={bet.id} className="bet-row" style={{ padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid var(--border)' }}>
+                        <div className="bet-row-main">
+                          <div className="bet-row-top">
+                            <span className="bet-pick" style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{bet.pick}</span>
                             {bet.result === 'pending'
                               ? <span style={{ fontSize: '15px' }} title="Pending">⏳</span>
                               : <span style={resultBadge(bet.result)}>{bet.result}</span>
@@ -737,7 +737,7 @@ export default function Bets() {
                           )}
                         </div>
                         {bet.result === 'pending' ? (
-                          <div className='bet-settle-btns' style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div className='bet-row-side bet-settle-btns' style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginRight: '4px' }}>+{calcPayoutUnits(bet.stake_units, bet.odds).toFixed(2)}u</span>
                             <button onClick={() => handleSettle(bet.id, 'win', bet)} disabled={settling === bet.id} style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Win</button>
                             <button onClick={() => handleSettle(bet.id, 'loss', bet)} disabled={settling === bet.id} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Loss</button>
@@ -746,12 +746,12 @@ export default function Bets() {
                             <button onClick={() => handleDelete(bet.id)} disabled={deleting === bet.id} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px' }}>×</button>
                           </div>
                         ) : (
-                          <div style={{ textAlign: 'right' }}>
+                          <div className="bet-row-side" style={{ textAlign: 'right' }}>
                             <div style={{ fontSize: '14px', fontWeight: '700', color: bet.result === 'void' ? '#7c3aed' : profitUnits >= 0 ? '#16a34a' : '#dc2626' }}>
                               {bet.result === 'void' ? 'voided' : `${profitUnits >= 0 ? '+' : ''}${profitUnits.toFixed(2)}u`}
                             </div>
                             <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                              {bet.result === 'void' ? 'stake returned' : `$${(profitUnits * unitSize).toFixed(2)}`}
+                              {bet.result === 'void' ? 'stake returned' : `${profitUnits < 0 ? '-' : ''}$${Math.abs(profitUnits * unitSize).toFixed(2)}`}
                             </div>
                           </div>
                         )}
