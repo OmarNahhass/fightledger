@@ -1,15 +1,11 @@
-import { createContext, useContext, useEffect, useState } from 'react'
-import { getTheme, setTheme, initTheme } from './theme'
+import { createContext, useContext, useState } from 'react'
+import { setTheme, initTheme } from './theme'
 
 const ThemeContext = createContext(null)
 
 export function ThemeProvider({ children }) {
-  const [theme, setThemeState] = useState('light')
-
-  useEffect(() => {
-    const t = initTheme()
-    setThemeState(t)
-  }, [])
+  // Read the saved theme on the first render so dark-mode users never see a light flash
+  const [theme, setThemeState] = useState(initTheme)
 
   const toggleTheme = () => {
     const next = theme === 'light' ? 'dark' : 'light'

@@ -1,16 +1,20 @@
-import { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { BrowserRouter, Routes, Route, Link, NavLink, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import { useTheme } from './lib/ThemeContext'
-import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import Bets from './pages/Bets'
-import Leaderboard from './pages/Leaderboard'
-import Activity from './pages/Activity'
-import Settings from './pages/Settings'
-import OpenParlays from './pages/OpenParlays'
 import Landing from './pages/Landing'
 import Wordmark from './components/Wordmark'
+
+// Each page's code (and heavy libraries like the charts) downloads only when that page is first opened
+const Login = lazy(() => import('./pages/Login'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Bets = lazy(() => import('./pages/Bets'))
+const Leaderboard = lazy(() => import('./pages/Leaderboard'))
+const Activity = lazy(() => import('./pages/Activity'))
+const Settings = lazy(() => import('./pages/Settings'))
+const OpenParlays = lazy(() => import('./pages/OpenParlays'))
+
+const PageLoading = () => <div style={{ color: 'var(--text-muted)', fontSize: '13px', padding: '20px' }}>Loading...</div>
 
 const navSections = [
   {
@@ -170,16 +174,9 @@ function Sidebar({ open, onClose }) {
 
 function RequireAuth({ children, redirectTo = '/login' }) {
   const { isLoggedIn, loading } = useAuth()
-  const navigate = useNavigate()
 
-  useEffect(() => {
-    if (!loading && !isLoggedIn) {
-      navigate(redirectTo)
-    }
-  }, [loading, isLoggedIn, redirectTo])
-
-  if (loading) return <div style={{ color: 'var(--text-muted)', fontSize: '13px', padding: '20px' }}>Loading...</div>
-  if (!isLoggedIn) return null
+  if (loading) return <PageLoading />
+  if (!isLoggedIn) return <Navigate to={redirectTo} replace />
 
   return children
 }
@@ -208,17 +205,19 @@ function Layout() {
       <div className={`sidebar-backdrop${menuOpen ? ' open' : ''}`} onClick={() => setMenuOpen(false)} />
       <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
       <main className="main-content" style={{ flex: 1, padding: '48px 56px', overflowY: 'auto', maxWidth: '960px', minWidth: 0 }}>
+        <Suspense fallback={<PageLoading />}>
         <Routes>
           <Route path="/leaderboard" element={<Leaderboard />} />
           {/* Key on the query so switching between Sign in / Get started resets the form mode */}
           <Route path="/login" element={<Login key={location.search} />} />
           <Route path="/" element={<Landing />} />
-          <Route path="/dashboard" element={<RequireAuth redirectTo="/login"><Dashboard /></RequireAuth>} />
-          <Route path="/bets" element={<RequireAuth redirectTo="/login"><Bets /></RequireAuth>} />
-          <Route path="/open-parlays" element={<RequireAuth redirectTo="/login"><OpenParlays /></RequireAuth>} />
-          <Route path="/activity" element={<RequireAuth redirectTo="/login"><Activity /></RequireAuth>} />
-          <Route path="/settings" element={<RequireAuth redirectTo="/login"><Settings /></RequireAuth>} />
+          <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+          <Route path="/bets" element={<RequireAuth><Bets /></RequireAuth>} />
+          <Route path="/open-parlays" element={<RequireAuth><OpenParlays /></RequireAuth>} />
+          <Route path="/activity" element={<RequireAuth><Activity /></RequireAuth>} />
+          <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
         </Routes>
+        </Suspense>
       </main>
     </div>
   )

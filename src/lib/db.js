@@ -31,24 +31,6 @@ export const getProfile = async (userId) => {
   return data;
 };
 
-export const getDisplayName = async (userId) => {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("display_name")
-    .eq("id", userId)
-    .maybeSingle();
-  if (error) throw error;
-  return data?.display_name || "";
-};
-
-export const updateDisplayName = async (userId, name) => {
-  const { error } = await supabase
-    .from("profiles")
-    .update({ display_name: name })
-    .eq("id", userId);
-  if (error) throw error;
-};
-
 export const updateProfile = async (
   userId,
   { display_name, bio, avatar_url },
@@ -130,11 +112,6 @@ export const createEvent = async (event) => {
   return data;
 };
 
-export const deleteEvent = async (eventId) => {
-  const { error } = await supabase.from("events").delete().eq("id", eventId);
-  if (error) throw error;
-};
-
 // ── FIGHTS ──────────────────────────────────────────
 
 export const getFightsByEvent = async (eventId) => {
@@ -162,20 +139,6 @@ export const createFight = async (fight) => {
   const { data, error } = await supabase
     .from("fights")
     .insert(fight)
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
-};
-
-export const updateFightResult = async (
-  fightId,
-  { winner, method, result_round },
-) => {
-  const { data, error } = await supabase
-    .from("fights")
-    .update({ winner, method, result_round })
-    .eq("id", fightId)
     .select()
     .single();
   if (error) throw error;
@@ -311,39 +274,7 @@ export const deleteImportedBets = async () => {
   if (error) throw error;
 };
 
-// ── BANKROLL ─────────────────────────────────────────
-
-export const getBankrollHistory = async () => {
-  const { data, error } = await supabase
-    .from("bankroll_snapshots")
-    .select("*")
-    .order("snapshot_date", { ascending: true });
-  if (error) throw error;
-  return data;
-};
-
-export const addBankrollSnapshot = async (balance, notes = "") => {
-  const userId = await getUserId();
-  const { data, error } = await supabase
-    .from("bankroll_snapshots")
-    .insert({ balance, notes, user_id: userId })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
-};
-
 // ── STATS ────────────────────────────────────────────
-
-export const getBetStats = async (userId = null) => {
-  let query = supabase
-    .from("bet_summary")
-    .select("result, stake, stake_units, profit_loss, odds");
-  if (userId) query = query.eq("user_id", userId);
-  const { data, error } = await query;
-  if (error) throw error;
-  return summarizeBetStats(data);
-};
 
 export const summarizeBetStats = (data) => {
   const settled = data.filter((b) => b.result !== "pending");
