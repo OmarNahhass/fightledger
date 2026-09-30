@@ -1,7 +1,10 @@
-import { useEffect, useState, useMemo } from 'react'
-import { getBetStats, getUnitSize, getBets } from '../lib/db'
+import { useMemo } from 'react'
+import { summarizeBetStats, getUnitSize, getBets } from '../lib/db'
 import { useAuth } from '../lib/AuthContext'
+import { useCachedQuery } from '../lib/queryCache'
 import ProfitChart from '../components/ProfitChart'
+
+const NO_BETS = []
 
 const calcPayoutUnits = (units, odds) => {
   const u = Number(units), o = Number(odds)
@@ -70,18 +73,13 @@ const ROICard = ({ label, profit, staked, wins, losses, avgOdds }) => {
 
 export default function Dashboard() {
   const { user } = useAuth()
-  const [stats, setStats] = useState(null)
-  const [unitSize, setUnitSize] = useState(10)
-  const [allBets, setAllBets] = useState([])
-  const [loading, setLoading] = useState(true)
+  const betsQuery = useCachedQuery(['bets', user?.id], () => getBets(user.id), { enabled: !!user })
+  const unitQuery = useCachedQuery(['unitSize', user?.id], getUnitSize, { enabled: !!user })
+  const allBets = betsQuery.data ?? NO_BETS
+  const unitSize = unitQuery.data ?? 10
+  const loading = betsQuery.loading || unitQuery.loading
 
-  useEffect(() => {
-    if (!user) return
-    Promise.all([getBetStats(user.id), getUnitSize(), getBets(user.id)])
-      .then(([s, u, b]) => { setStats(s); setUnitSize(u); setAllBets(b) })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [user])
+  const stats = useMemo(() => summarizeBetStats(allBets), [allBets])
 
   const pendingBets = useMemo(() => allBets.filter(b => b.result === 'pending'), [allBets])
   const settledBets = useMemo(() => allBets.filter(b => b.result !== 'pending'), [allBets])
@@ -139,7 +137,7 @@ export default function Dashboard() {
           </div>
 
           {/* Profit chart */}
-          <ProfitChart userId={user?.id} />
+          <ProfitChart bets={allBets} />
 
           {/* ROI by bet type */}
           <div style={{ marginTop: '20px' }}>

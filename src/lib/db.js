@@ -257,7 +257,10 @@ export const getBetStats = async (userId = null) => {
   if (userId) query = query.eq("user_id", userId);
   const { data, error } = await query;
   if (error) throw error;
+  return summarizeBetStats(data);
+};
 
+export const summarizeBetStats = (data) => {
   const settled = data.filter((b) => b.result !== "pending");
   const wins = settled.filter((b) => b.result === "win");
   const totalUnitsStaked = data.reduce(

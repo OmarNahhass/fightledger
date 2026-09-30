@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { ensureProfile } from './db'
 import { autoSettleBets } from './autoSettle'
+import { clearQueryCache } from './queryCache'
 
 const AuthContext = createContext(null)
 
@@ -18,6 +19,7 @@ export function AuthProvider({ children }) {
     })
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session ?? null)
+      if (!session) clearQueryCache()
       if (session) {
         ensureProfile(session.user.id, session.user.email.split('@')[0]).catch(console.error)
         autoSettleBets().catch(console.error)

@@ -1,49 +1,51 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { getBets } from '../lib/db'
 import { calcProfitUnits } from '../lib/calc'
 import { useTheme } from '../lib/ThemeContext'
 
-const isProp = (betType) => ['round_prop', 'method_prop', 'over_under'].includes(betType)
+// 'props' is what the bet form saves; the others are kept for older bets
+const isProp = (betType) => ['props', 'round_prop', 'method_prop', 'over_under'].includes(betType)
 
-export default function ProfitChart({ userId }) {
-  const [bets, setBets] = useState([])
-  const [loading, setLoading] = useState(true)
+// Only animate the lines the first time the chart appears in a session, so
+// coming back to the dashboard doesn't replay the draw-in animation every time
+let hasAnimated = false
+
+export default function ProfitChart({ bets }) {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
 
-  useEffect(() => {
-    if (!userId) return
-    getBets(userId).then(setBets).catch(console.error).finally(() => setLoading(false))
-  }, [userId])
-
   const chartData = useMemo(() => {
     const settled = bets.filter(b => b.result !== 'pending').sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
-    let straight = 0, parlay = 0, props = 0, overall = 0
+    const totals = { straight: 0, parlay: 0, props: 0, overall: 0 }
     return settled.map((b, i) => {
       const profit = calcProfitUnits(b.stake_units, b.odds, b.result)
-      overall += profit
-      if (b.bet_type === 'moneyline') straight += profit
-      else if (b.bet_type === 'parlay') parlay += profit
-      else if (isProp(b.bet_type)) props += profit
+      totals.overall += profit
+      if (b.bet_type === 'moneyline') totals.straight += profit
+      else if (b.bet_type === 'parlay') totals.parlay += profit
+      else if (isProp(b.bet_type)) totals.props += profit
       return {
         index: i + 1,
         date: b.event_date ? new Date(b.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : `Bet ${i + 1}`,
-        straight: Number(straight.toFixed(2)),
-        parlay: Number(parlay.toFixed(2)),
-        props: Number(props.toFixed(2)),
-        overall: Number(overall.toFixed(2)),
+        straight: Number(totals.straight.toFixed(2)),
+        parlay: Number(totals.parlay.toFixed(2)),
+        props: Number(totals.props.toFixed(2)),
+        overall: Number(totals.overall.toFixed(2)),
       }
     })
   }, [bets])
 
-  if (loading || chartData.length === 0) return null
+  const hasChart = chartData.length > 0
+  const animate = !hasAnimated
+  useEffect(() => { if (hasChart) hasAnimated = true }, [hasChart])
+
+  if (!hasChart) return null
 
   const gridColor = isDark ? '#1f1f1f' : '#f0f0f0'
   const axisColor = isDark ? '#333' : '#ddd'
   const tickColor = isDark ? '#444' : '#bbb'
   const tooltipBg = isDark ? '#111' : '#fff'
   const tooltipBorder = isDark ? '#1f1f1f' : '#ebebeb'
+  const lineProps = { type: 'monotone', strokeWidth: 2, dot: false, isAnimationActive: animate, animationDuration: 600 }
 
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px' }}>
@@ -61,10 +63,10 @@ export default function ProfitChart({ userId }) {
             formatter={(value, name) => [`${value}u`, name]}
           />
           <Legend wrapperStyle={{ fontSize: '11px', color: tickColor, paddingTop: '16px' }} />
-          <Line type="monotone" dataKey="straight" name="Straight" stroke="#3b82f6" strokeWidth={2} dot={false} />
-          <Line type="monotone" dataKey="parlay" name="Parlays" stroke="#f59e0b" strokeWidth={2} dot={false} />
-          <Line type="monotone" dataKey="props" name="Props" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-          <Line type="monotone" dataKey="overall" name="Overall" stroke={isDark ? '#c8c8c8' : '#1a1a1a'} strokeWidth={2.5} dot={false} />
+          <Line {...lineProps} dataKey="straight" name="Straight" stroke="#3b82f6" />
+          <Line {...lineProps} dataKey="parlay" name="Parlays" stroke="#f59e0b" />
+          <Line {...lineProps} dataKey="props" name="Props" stroke="#8b5cf6" />
+          <Line {...lineProps} dataKey="overall" name="Overall" stroke={isDark ? '#c8c8c8' : '#1a1a1a'} strokeWidth={2.5} />
         </LineChart>
       </ResponsiveContainer>
     </div>

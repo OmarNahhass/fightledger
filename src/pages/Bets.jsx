@@ -1,6 +1,7 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { getBets, getEvents, createEvent, getFightsByEvent, createFight, createBet, updateBetResult, deleteBet, getUnitSize, setUnitSize as saveUnitSize } from '../lib/db'
 import { useAuth } from '../lib/AuthContext'
+import { useCachedQuery } from '../lib/queryCache'
 import { getFightsByDate } from '../lib/mmaApi'
 import { exportBetsToCSV } from '../lib/exportCSV'
 
@@ -12,7 +13,9 @@ const UPCOMING_UFC_EVENTS = [
   { name: 'UFC Fight Night: Hernandez vs. Rodrigues', promotion: 'UFC', event_date: '2026-08-23', location: 'TBD', status: 'upcoming' },
 ]
 
-const BET_TYPES = ['moneyline', 'parlay', 'props']
+const NO_ROWS = []
+
+const BET_TYPES =['moneyline', 'parlay', 'props']
 const SPORTSBOOKS = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'PointsBet', 'BetRivers', 'ESPN Bet', 'Bet365', 'Kalshi', 'Polymarket', 'Other']
 const empty = { fight_id: '', bet_type: 'moneyline', pick: '', odds: '', stake_units: '', notes: '', sportsbook: '', confidence: 0, prop_tier: 'fight', prop_fighter: '' }
 const emptyLeg = { fight_id: '', pick: '', odds: '' }
@@ -64,14 +67,87 @@ const calcParlayOdds = (legs) => {
   return toAmerican(combined)
 }
 
-const resultBadge = (result) => {
-  const base = { padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }
-  if (result === 'win') return { ...base, color: '#16a34a', background: '#dcfce7', borderRadius: '999px', border: 'none' }
-  if (result === 'loss') return { ...base, color: '#dc2626', background: '#fee2e2', borderRadius: '999px', border: 'none' }
-  if (result === 'push') return { ...base, color: '#d97706', background: '#fffbeb' }
-  if (result === 'void') return { ...base, color: '#7c3aed', background: '#f5f3ff' }
-  return { ...base, color: 'var(--text-secondary)', background: 'var(--bg-hover)' }
+const SPORTSBOOK_DOMAINS = {
+  'DraftKings': 'draftkings.com',
+  'FanDuel': 'fanduel.com',
+  'BetMGM': 'betmgm.com',
+  'Caesars': 'caesars.com',
+  'BetRivers': 'betrivers.com',
+  'ESPN Bet': 'espnbet.com',
+  'Bet365': 'bet365.com',
+  'Unibet': 'unibet.com',
+  'Betway': 'betway.com',
+  'BetOnline': 'betonline.ag',
+  'MyBookie': 'mybookie.ag',
+  'Bovada': 'bovada.lv',
+  'BetUS': 'betus.com',
+  'Heritage Sports': 'heritagesports.eu',
+  'Pinnacle': 'pinnacle.com',
+  'SportsBetting.ag': 'sportsbetting.ag',
+  'PointsBet': 'pointsbet.com',
+  'Circa Sports': 'circasports.com',
+  'SuperBook': 'superbook.com',
+  'WynnBET': 'wynnbet.com',
+  'Fanatics': 'fanatics.com',
+  'Kalshi': 'kalshi.com',
+  'Polymarket': 'polymarket.com',
 }
+
+const GREEN = '#16a34a'
+const RED = '#dc2626'
+const RESULT_COLORS = { win: GREEN, loss: RED, push: '#d97706', void: '#7c3aed', pending: 'var(--text-faint)' }
+
+// Event dates are stored as "YYYY-MM-DD"; new Date() would read that as UTC midnight, which is the previous day in the Americas
+const parseLocalDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T00:00:00`) : new Date(d)
+const fmtEventDate = (d) => parseLocalDate(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+
+const fmtOdds = (odds) => `${Number(odds) > 0 ? '+' : ''}${odds}`
+const fmtUnits = (u) => `${u >= 0 ? '+' : ''}${u.toFixed(2)}u`
+const fmtDollars = (d) => `${d < 0 ? '-' : ''}$${Math.abs(d).toFixed(2)}`
+const profitColor = (u) => u > 0 ? GREEN : u < 0 ? RED : 'var(--text-secondary)'
+
+const betProfitUnits = (bet) => {
+  if (bet.result === 'win') return calcPayoutUnits(bet.stake_units, bet.odds)
+  if (bet.result === 'loss') return -Number(bet.stake_units)
+  return 0
+}
+
+const isParlayBet = (bet) => bet.bet_type ? bet.bet_type === 'parlay' : !!bet.pick?.includes(' + ')
+
+// Parlay legs are stored in notes as "Leg 1: Pick (+odds) - A vs B | Leg 2: ..."
+const parseParlayLegs = (bet) => {
+  const fromNotes = (bet.notes || '').split(' | ').map(str => {
+    const m = str.match(/^Leg \d+: (.+?) \(([-+]?\d+)\)(?: - (.+))?$/)
+    return m ? { pick: m[1], odds: m[2], fight: m[3] } : null
+  }).filter(Boolean)
+  if (fromNotes.length) return fromNotes
+  return (bet.pick || '').split(' + ').map(pick => ({ pick }))
+}
+
+const iconProps = { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }
+const PencilIcon = () => <svg {...iconProps} width={12} height={12}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+const ClockIcon = () => <svg {...iconProps}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+const ChevronIcon = ({ open }) => <svg {...iconProps} width={12} height={12} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><path d="m6 9 6 6 6-6" /></svg>
+
+const ConfidenceMeter = ({ value }) => (
+  <span title={`Confidence ${value}/5`} aria-label={`Confidence ${value} out of 5`} style={{ fontSize: '12px', letterSpacing: '1px', lineHeight: 1 }}>
+    {[1, 2, 3, 4, 5].map(n => <span key={n} style={{ color: n <= value ? '#f59e0b' : 'var(--text-faint)' }}>★</span>)}
+  </span>
+)
+
+const SummaryStat = ({ label, value, sub, color }) => (
+  <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 16px', minWidth: 0 }}>
+    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>{label}</div>
+    <div className="num" style={{ fontSize: '20px', fontWeight: '700', color: color || 'var(--text-primary)', letterSpacing: '-0.3px' }}>{value}</div>
+    {sub && <div className="num" style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{sub}</div>}
+  </div>
+)
+
+const BET_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'pending', label: 'Pending' },
+  { key: 'settled', label: 'Settled' },
+]
 
 const inputStyle = { width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: 'var(--text-primary)', outline: 'none' }
 const selectStyle = { ...inputStyle, cursor: 'pointer' }
@@ -82,11 +158,17 @@ const today = new Date(new Date().setHours(0, 0, 0, 0))
 
 export default function Bets() {
   const { user } = useAuth()
-  const [bets, setBets] = useState([])
-  const [myEvents, setMyEvents] = useState([])
+  const betsQuery = useCachedQuery(['bets', user?.id], () => getBets(user.id), { enabled: !!user })
+  const eventsQuery = useCachedQuery(['events', user?.id], getEvents, { enabled: !!user })
+  const unitQuery = useCachedQuery(['unitSize', user?.id], getUnitSize, { enabled: !!user })
+  const bets = betsQuery.data ?? NO_ROWS
+  const myEvents = eventsQuery.data ?? NO_ROWS
+  const unitSize = unitQuery.data ?? 10
+  const { setData: setBets } = betsQuery
+  const { setData: setMyEvents } = eventsQuery
+  const { setData: setUnitSize } = unitQuery
+  const loading = betsQuery.loading || unitQuery.loading
   const [fights, setFights] = useState([])
-  const [unitSize, setUnitSize] = useState(10)
-  const [loading, setLoading] = useState(true)
   const [step, setStep] = useState(null)
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [addingEvent, setAddingEvent] = useState(null)
@@ -100,13 +182,15 @@ export default function Bets() {
   const [editingUnit, setEditingUnit] = useState(false)
   const [unitInput, setUnitInput] = useState('')
   const [savingUnit, setSavingUnit] = useState(false)
+  const [filter, setFilter] = useState('all')
+  const [expandedBets, setExpandedBets] = useState(() => new Set())
 
-  useEffect(() => {
-    if (!user) return
-    getBets(user.id).then(setBets).catch(console.error)
-    getEvents().then(setMyEvents).catch(console.error)
-    getUnitSize().then(setUnitSize).catch(console.error).finally(() => setLoading(false))
-  }, [user])
+  const toggleExpanded = (betId) => setExpandedBets(prev => {
+    const next = new Set(prev)
+    if (next.has(betId)) next.delete(betId)
+    else next.add(betId)
+    return next
+  })
 
   const myEventDates = new Set(myEvents.map(e => e.event_date))
   const futureTrackedEvents = myEvents.filter(e => new Date(e.event_date) >= today)
@@ -123,7 +207,7 @@ export default function Bets() {
       let event = myEvents.find(e => e.event_date === ufc.event_date)
       if (!event) {
         event = await createEvent(ufc)
-        setMyEvents(prev => [event, ...prev])
+        setMyEvents(prev => [event, ...(prev ?? [])])
       }
       setSelectedEvent(event)
       setFetchingFights(true)
@@ -254,6 +338,33 @@ export default function Bets() {
     return Object.values(groups).sort((a, b) => new Date(b.eventDate) - new Date(a.eventDate))
   }, [bets])
 
+  const visibleGroups = useMemo(() => {
+    if (filter === 'all') return groupedBets
+    return groupedBets
+      .map(g => ({ ...g, bets: g.bets.filter(b => filter === 'pending' ? b.result === 'pending' : b.result !== 'pending') }))
+      .filter(g => g.bets.length)
+  }, [groupedBets, filter])
+
+  const summary = useMemo(() => {
+    const t = { wins: 0, losses: 0, pushes: 0, pending: 0, profit: 0, settledStake: 0, pendingStake: 0, pendingToWin: 0 }
+    for (const b of bets) {
+      const units = Number(b.stake_units || 0)
+      if (b.result === 'pending') {
+        t.pending++
+        t.pendingStake += units
+        t.pendingToWin += calcPayoutUnits(units, b.odds)
+        continue
+      }
+      if (b.result === 'win') t.wins++
+      if (b.result === 'loss') t.losses++
+      if (b.result === 'push') t.pushes++
+      if (b.result !== 'void') t.settledStake += units
+      t.profit += betProfitUnits(b)
+    }
+    t.roi = t.settledStake ? t.profit / t.settledStake * 100 : 0
+    return t
+  }, [bets])
+
   if (loading) return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>
 
   const isParlay = form.bet_type === 'parlay'
@@ -293,7 +404,7 @@ export default function Bets() {
           ) : (
             <button onClick={() => { setEditingUnit(true); setUnitInput(String(unitSize)) }}
               style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
-              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>1 unit = ${unitSize.toFixed(2)} <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>✏️</span></p>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>1 unit = ${unitSize.toFixed(2)} <span style={{ color: 'var(--text-muted)', display: 'flex' }}><PencilIcon /></span></p>
             </button>
           )}
         </div>
@@ -324,7 +435,7 @@ export default function Bets() {
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{event.name}</div>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    {new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                    {fmtEventDate(event.event_date)}
                     {event.location && event.location !== 'TBD' && ` · ${event.location}`}
                   </div>
                 </div>
@@ -640,6 +751,37 @@ export default function Bets() {
         </div>
       )}
 
+      {/* Summary + filters */}
+      {!step && bets.length > 0 && (
+        <>
+          <div className="stat-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+            <SummaryStat label="Record" value={`${summary.wins}–${summary.losses}${summary.pushes ? `–${summary.pushes}` : ''}`} sub={summary.pushes ? 'W–L–P' : 'W–L'} />
+            <SummaryStat label="Profit" value={fmtUnits(summary.profit)} sub={fmtDollars(summary.profit * unitSize)} color={profitColor(summary.profit)} />
+            <SummaryStat label="ROI" value={`${summary.roi >= 0 ? '+' : ''}${summary.roi.toFixed(1)}%`} sub={`on ${Number(summary.settledStake.toFixed(2))}u settled`} color={profitColor(summary.roi)} />
+            <SummaryStat label="Pending" value={`${Number(summary.pendingStake.toFixed(2))}u`} sub={summary.pending ? `${summary.pending} bet${summary.pending !== 1 ? 's' : ''} · to win ${summary.pendingToWin.toFixed(2)}u` : 'nothing open'} />
+          </div>
+
+          <div role="tablist" style={{ display: 'inline-flex', background: 'var(--bg-hover)', borderRadius: '10px', padding: '3px', gap: '2px', marginBottom: '16px' }}>
+            {BET_FILTERS.map(({ key, label }) => {
+              const count = key === 'all' ? bets.length : key === 'pending' ? summary.pending : bets.length - summary.pending
+              const active = filter === key
+              return (
+                <button key={key} role="tab" aria-selected={active} onClick={() => setFilter(key)} style={{
+                  padding: '7px 14px', borderRadius: '7px', fontSize: '12px', fontWeight: '600',
+                  border: 'none', cursor: 'pointer',
+                  background: active ? 'var(--bg-card)' : 'transparent',
+                  color: active ? 'var(--text-primary)' : 'var(--text-muted)',
+                  boxShadow: active ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'all 0.15s',
+                }}>
+                  {label} <span className="num" style={{ color: 'var(--text-muted)', fontWeight: '500' }}>{count}</span>
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+
       {/* Bets grouped by event */}
       {!step && (
         <div>
@@ -648,118 +790,121 @@ export default function Bets() {
               <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>No bets yet</div>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Click "+ Add bet" to get started</div>
             </div>
+          ) : visibleGroups.length === 0 ? (
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '40px', textAlign: 'center', fontSize: '14px', color: 'var(--text-secondary)' }}>
+              {filter === 'pending' ? 'No pending bets' : 'No settled bets yet'}
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {groupedBets.map(group => (
-                <div key={group.eventName} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: '3px solid var(--accent)', borderRadius: '12px', overflow: 'hidden' }}>
-                  <div className="bet-group-header" style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }}>{group.eventName}</div>
-                      {group.eventDate && (
-                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                          {new Date(group.eventDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                        </div>
-                      )}
-                    </div>
-                    <div className="bet-group-stats">
-                      <span>{group.bets.filter(b => b.result === 'win').length}W</span>
-                      <span>{group.bets.filter(b => b.result === 'loss').length}L</span>
-                      <span>{group.bets.filter(b => b.result === 'pending').length} pending</span>
-                      {(() => {
-                        const p = group.bets.reduce((sum, b) => {
-                          if (b.result === 'win') return sum + calcPayoutUnits(b.stake_units, b.odds)
-                          if (b.result === 'loss') return sum - Number(b.stake_units)
-                          return sum
-                        }, 0)
-                        return <span style={{ color: p > 0 ? '#16a34a' : p < 0 ? '#dc2626' : 'var(--text-secondary)', fontWeight: '600' }}>{p >= 0 ? '+' : ''}{p.toFixed(2)}u</span>
-                      })()}
-                    </div>
-                  </div>
-                  {group.bets.map((bet, i) => {
-                    const profitUnits = bet.result === 'win' ? calcPayoutUnits(bet.stake_units, bet.odds) : bet.result === 'loss' ? -Number(bet.stake_units) : 0
-                    const isLast = i === group.bets.length - 1
-                    return (
-                      <div key={bet.id} className="bet-row" style={{ padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid var(--border)' }}>
-                        <div className="bet-row-main">
-                          <div className="bet-row-top">
-                            <span className="bet-pick" style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{bet.pick}</span>
-                            {bet.result === 'pending'
-                              ? <span style={{ fontSize: '15px' }} title="Pending">⏳</span>
-                              : <span style={resultBadge(bet.result)}>{bet.result}</span>
-                            }
-                            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)', background: 'var(--bg-hover)', padding: '2px 8px', borderRadius: '6px', letterSpacing: '-0.2px' }}>
-                              {Number(bet.odds) > 0 ? '+' : ''}{bet.odds}
-                            </span>
-                            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)', background: 'var(--bg-hover)', padding: '2px 8px', borderRadius: '6px' }}>
-                              {bet.stake_units}u
-                            </span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                            {bet.sportsbook && (
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: '4px' }}>
-                                <img
-                                  src={`https://www.google.com/s2/favicons?domain=${({
-                                    'DraftKings': 'draftkings.com',
-                                    'FanDuel': 'fanduel.com',
-                                    'BetMGM': 'betmgm.com',
-                                    'Caesars': 'caesars.com',
-                                    'BetRivers': 'betrivers.com',
-                                    'ESPN Bet': 'espnbet.com',
-                                    'Bet365': 'bet365.com',
-                                    'Unibet': 'unibet.com',
-                                    'Betway': 'betway.com',
-                                    'BetOnline': 'betonline.ag',
-                                    'MyBookie': 'mybookie.ag',
-                                    'Bovada': 'bovada.lv',
-                                    'BetUS': 'betus.com',
-                                    'Heritage Sports': 'heritagesports.eu',
-                                    'Pinnacle': 'pinnacle.com',
-                                    'SportsBetting.ag': 'sportsbetting.ag',
-                                    'PointsBet': 'pointsbet.com',
-                                    'Circa Sports': 'circasports.com',
-                                    'SuperBook': 'superbook.com',
-                                    'WynnBET': 'wynnbet.com',
-                                    'Fanatics': 'fanatics.com',
-                                    'Kalshi': 'kalshi.com',
-                                    'Polymarket': 'polymarket.com',
-                                  })[bet.sportsbook] || 'google.com'}&sz=16`}
-                                  alt={bet.sportsbook}
-                                  style={{ width: '12px', height: '12px', borderRadius: '2px' }}
-                                  onError={e => e.target.style.display = 'none'}
-                                />
-                                <span style={{ fontWeight: '700' }}>{bet.sportsbook}</span>
-                              </span>
-                            )}
-                            {bet.confidence && <span style={{ fontSize: '11px', color: '#f59e0b', background: '#292524', padding: '1px 6px', borderRadius: '4px', letterSpacing: '1px' }}>{'★'.repeat(bet.confidence)}</span>}
-                          </div>
-                          {bet.bet_type === 'parlay' && bet.notes && (
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px', maxWidth: '400px' }}>{bet.notes}</div>
-                          )}
-                        </div>
-                        {bet.result === 'pending' ? (
-                          <div className='bet-row-side bet-settle-btns' style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginRight: '4px' }}>+{calcPayoutUnits(bet.stake_units, bet.odds).toFixed(2)}u</span>
-                            <button onClick={() => handleSettle(bet.id, 'win', bet)} disabled={settling === bet.id} style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Win</button>
-                            <button onClick={() => handleSettle(bet.id, 'loss', bet)} disabled={settling === bet.id} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Loss</button>
-                            <button onClick={() => handleSettle(bet.id, 'push', bet)} disabled={settling === bet.id} style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Push</button>
-                            <button onClick={() => handleSettle(bet.id, 'void', bet)} disabled={settling === bet.id} style={{ background: '#f5f3ff', color: '#7c3aed', border: '1px solid #ddd6fe', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Void</button>
-                            <button onClick={() => handleDelete(bet.id)} disabled={deleting === bet.id} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px' }}>×</button>
-                          </div>
-                        ) : (
-                          <div className="bet-row-side" style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '14px', fontWeight: '700', color: bet.result === 'void' ? '#7c3aed' : profitUnits >= 0 ? '#16a34a' : '#dc2626' }}>
-                              {bet.result === 'void' ? 'voided' : `${profitUnits >= 0 ? '+' : ''}${profitUnits.toFixed(2)}u`}
-                            </div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                              {bet.result === 'void' ? 'stake returned' : `${profitUnits < 0 ? '-' : ''}$${Math.abs(profitUnits * unitSize).toFixed(2)}`}
-                            </div>
+              {visibleGroups.map(group => {
+                const wins = group.bets.filter(b => b.result === 'win').length
+                const losses = group.bets.filter(b => b.result === 'loss').length
+                const pending = group.bets.filter(b => b.result === 'pending').length
+                const groupProfit = group.bets.reduce((sum, b) => sum + betProfitUnits(b), 0)
+                const hasSettled = wins + losses > 0
+                return (
+                  <div key={group.eventName} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+                    <div className="bet-group-header" style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }}>{group.eventName}</div>
+                        {group.eventDate && (
+                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            {fmtEventDate(group.eventDate)}
                           </div>
                         )}
                       </div>
-                    )
-                  })}
-                </div>
-              ))}
+                      <div className="bet-group-stats" style={{ alignItems: 'center' }}>
+                        {hasSettled && <span className="num" style={{ fontWeight: '600' }}>{wins}–{losses}</span>}
+                        {pending > 0 && <span>{pending} pending</span>}
+                        {hasSettled && (
+                          <span className="num" style={{
+                            fontWeight: '700', padding: '3px 8px', borderRadius: '999px', color: profitColor(groupProfit),
+                            background: groupProfit > 0 ? 'rgba(22,163,74,0.12)' : groupProfit < 0 ? 'rgba(220,38,38,0.12)' : 'var(--bg-hover)',
+                          }}>
+                            {fmtUnits(groupProfit)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {group.bets.map((bet, i) => {
+                      const profitUnits = betProfitUnits(bet)
+                      const isLast = i === group.bets.length - 1
+                      const parlay = isParlayBet(bet)
+                      const legs = parlay ? parseParlayLegs(bet) : []
+                      const expanded = expandedBets.has(bet.id)
+                      return (
+                        <div key={bet.id} className="bet-row" style={{ padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid var(--border)', borderLeft: `3px solid ${RESULT_COLORS[bet.result] || 'var(--text-faint)'}` }}>
+                          <div className="bet-row-main">
+                            <div className="bet-row-top">
+                              <span className="bet-pick" style={{ fontSize: '14px', fontWeight: '600', color: bet.result === 'loss' ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{bet.pick}</span>
+                              {parlay && (
+                                <button onClick={() => toggleExpanded(bet.id)} aria-expanded={expanded} style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '700', letterSpacing: '0.5px',
+                                  color: 'var(--text-secondary)', background: 'var(--bg-hover)', border: 'none', borderRadius: '4px', padding: '3px 6px', cursor: 'pointer',
+                                }}>
+                                  PARLAY · {legs.length} LEGS <ChevronIcon open={expanded} />
+                                </button>
+                              )}
+                              {bet.bet_type === 'props' && (
+                                <span style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.5px', color: 'var(--text-secondary)', background: 'var(--bg-hover)', borderRadius: '4px', padding: '3px 6px' }}>PROP</span>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px 12px', flexWrap: 'wrap', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                              <span className="num" style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                                {bet.stake_units}u <span style={{ color: 'var(--text-muted)', fontWeight: '500' }}>@</span> {fmtOdds(bet.odds)}
+                              </span>
+                              {bet.sportsbook && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: '600' }}>
+                                  <img
+                                    src={`https://www.google.com/s2/favicons?domain=${SPORTSBOOK_DOMAINS[bet.sportsbook] || 'google.com'}&sz=32`}
+                                    alt=""
+                                    style={{ width: '14px', height: '14px', borderRadius: '3px' }}
+                                    onError={e => e.target.style.display = 'none'}
+                                  />
+                                  {bet.sportsbook}
+                                </span>
+                              )}
+                              {bet.confidence > 0 && <ConfidenceMeter value={bet.confidence} />}
+                            </div>
+                            {parlay && expanded && (
+                              <ol style={{ listStyle: 'none', marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '10px', borderLeft: '2px solid var(--border)' }}>
+                                {legs.map((leg, li) => (
+                                  <li key={li} style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                    <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{leg.pick}</span>
+                                    {leg.odds && <span className="num" style={{ marginLeft: '6px' }}>{fmtOdds(leg.odds)}</span>}
+                                    {leg.fight && <span style={{ color: 'var(--text-muted)', marginLeft: '6px' }}>· {leg.fight}</span>}
+                                  </li>
+                                ))}
+                              </ol>
+                            )}
+                          </div>
+                          {bet.result === 'pending' ? (
+                            <div className='bet-row-side bet-settle-btns' style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span className="num" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--text-muted)', marginRight: '4px' }}>
+                                <ClockIcon /> to win {calcPayoutUnits(bet.stake_units, bet.odds).toFixed(2)}u
+                              </span>
+                              <button onClick={() => handleSettle(bet.id, 'win', bet)} disabled={settling === bet.id} style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Win</button>
+                              <button onClick={() => handleSettle(bet.id, 'loss', bet)} disabled={settling === bet.id} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Loss</button>
+                              <button onClick={() => handleSettle(bet.id, 'push', bet)} disabled={settling === bet.id} style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Push</button>
+                              <button onClick={() => handleSettle(bet.id, 'void', bet)} disabled={settling === bet.id} style={{ background: '#f5f3ff', color: '#7c3aed', border: '1px solid #ddd6fe', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Void</button>
+                              <button onClick={() => handleDelete(bet.id)} disabled={deleting === bet.id} aria-label="Delete bet" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px' }}>×</button>
+                            </div>
+                          ) : (
+                            <div className="bet-row-side" style={{ textAlign: 'right' }}>
+                              <div className="num" style={{ fontSize: '15px', fontWeight: '700', color: bet.result === 'win' || bet.result === 'loss' ? profitColor(profitUnits) : RESULT_COLORS[bet.result] }}>
+                                {bet.result === 'void' ? 'Void' : bet.result === 'push' ? 'Push' : fmtUnits(profitUnits)}
+                              </div>
+                              <div className="num" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                {bet.result === 'void' || bet.result === 'push' ? 'stake returned' : fmtDollars(profitUnits * unitSize)}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

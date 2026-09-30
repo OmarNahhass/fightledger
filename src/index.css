@@ -341,3 +341,16 @@ input[type="number"]::-webkit-outer-spin-button {
     margin-top: 6px;
   }
 }
+
+/* Tabular figures so numbers line up across rows */
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.bet-row {
+  transition: background 0.15s;
+}
+
+.bet-row:hover {
+  background: var(--bg-hover);
+}

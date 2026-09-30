@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   getOpenParlays, createOpenParlay, addOpenParlayLeg,
   settleOpenParlayLeg, updateOpenParlayValue, deleteOpenParlay,
   getEvents, getFightsByEvent
 } from '../lib/db'
 import { useAuth } from '../lib/AuthContext'
+import { useCachedQuery } from '../lib/queryCache'
+
+const NO_ROWS = []
 
 const OPEN_PARLAY_BOOKS = [
   'BetOnline', 'MyBookie', 'Bovada', 'BetUS', 'SportsBetting.ag',
@@ -38,10 +41,13 @@ const resultBadge = (result) => {
 
 export default function OpenParlays() {
   const { user } = useAuth()
-  const [parlays, setParlays] = useState([])
-  const [events, setEvents] = useState([])
+  const parlaysQuery = useCachedQuery(['openParlays', user?.id], () => getOpenParlays(user.id), { enabled: !!user })
+  const eventsQuery = useCachedQuery(['events', user?.id], getEvents, { enabled: !!user })
+  const parlays = parlaysQuery.data ?? NO_ROWS
+  const events = eventsQuery.data ?? NO_ROWS
+  const { setData: setParlays } = parlaysQuery
+  const loading = parlaysQuery.loading || eventsQuery.loading
   const [fights, setFights] = useState({})
-  const [loading, setLoading] = useState(true)
 
   const [showNewForm, setShowNewForm] = useState(false)
   const [newName, setNewName] = useState('')
@@ -57,14 +63,6 @@ export default function OpenParlays() {
   const [savingLeg, setSavingLeg] = useState(false)
 
   const [settling, setSettling] = useState(null)
-
-  useEffect(() => {
-    if (!user) return
-    Promise.all([getOpenParlays(user.id), getEvents()])
-      .then(([p, e]) => { setParlays(p); setEvents(e) })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [user])
 
   const loadFights = async (eventId) => {
     if (fights[eventId]) return
@@ -171,7 +169,7 @@ export default function OpenParlays() {
       <div className="page-header">
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.4px', marginBottom: '4px' }}>Open Parlays</h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Compounding parlays — available on BetOnline, MyBookie, Bovada, BetUS, SportsBetting.ag</p>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Compounding parlays: only available on BetOnline, MyBookie, Bovada, BetUS, and SportsBetting.ag</p>
         </div>
         {!showNewForm && (
           <button style={btnPrimary} onClick={() => setShowNewForm(true)}>+ New open parlay</button>

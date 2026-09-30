@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
 import { getFollowing, getActivityFeed } from '../lib/db'
 import { useAuth } from '../lib/AuthContext'
+import { useCachedQuery } from '../lib/queryCache'
+
+const NO_ROWS = []
 
 const timeAgo = (dateStr) => {
   if (!dateStr) return ''
@@ -24,21 +26,12 @@ const resultBadge = (result) => {
 
 export default function Activity() {
   const { user } = useAuth()
-  const [feed, setFeed] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [followingIds, setFollowingIds] = useState([])
-
-  useEffect(() => {
-    if (!user) return
-    getFollowing(user.id)
-      .then(async (ids) => {
-        setFollowingIds(ids)
-        const activity = await getActivityFeed(ids)
-        setFeed(activity)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [user])
+  const { data, loading } = useCachedQuery(['activity', user?.id], async () => {
+    const followingIds = await getFollowing(user.id)
+    return { followingIds, feed: await getActivityFeed(followingIds) }
+  }, { enabled: !!user })
+  const feed = data?.feed ?? NO_ROWS
+  const followingIds = data?.followingIds ?? NO_ROWS
 
   if (loading) return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>
 

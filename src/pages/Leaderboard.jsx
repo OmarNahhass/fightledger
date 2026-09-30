@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { getBets, getFollowing, followUser, unfollowUser } from '../lib/db'
 import { calcProfitUnits } from '../lib/calc'
 import { useAuth } from '../lib/AuthContext'
+import { useCachedQuery } from '../lib/queryCache'
+
+const NO_ROWS = []
 
 const PERIODS = [
   { key: 'all', label: 'All time' },
@@ -29,25 +32,15 @@ const isInPeriod = (dateStr, period) => {
 
 export default function Leaderboard() {
   const { user, isLoggedIn } = useAuth()
-  const [bets, setBets] = useState([])
-  const [followingIds, setFollowingIds] = useState([])
-  const [loading, setLoading] = useState(true)
+  const betsQuery = useCachedQuery(['bets', 'all'], () => getBets())
+  const followingQuery = useCachedQuery(['following', user?.id], () => getFollowing(user.id), { enabled: !!user })
+  const bets = betsQuery.data ?? NO_ROWS
+  const followingIds = followingQuery.data ?? NO_ROWS
+  const { setData: setFollowingIds } = followingQuery
+  const { loading } = betsQuery
   const [view, setView] = useState('all')
   const [period, setPeriod] = useState('all')
   const [followBusy, setFollowBusy] = useState(null)
-
-  useEffect(() => {
-    getBets()
-      .then(setBets)
-      .catch(console.error)
-      .finally(() => setLoading(false))
-
-    if (user) {
-      getFollowing(user.id)
-        .then(setFollowingIds)
-        .catch(console.error)
-    }
-  }, [user])
 
   const handleToggleFollow = async (targetId) => {
     if (!isLoggedIn) return
@@ -55,10 +48,10 @@ export default function Leaderboard() {
     try {
       if (followingIds.includes(targetId)) {
         await unfollowUser(user.id, targetId)
-        setFollowingIds(prev => prev.filter(id => id !== targetId))
+        setFollowingIds(prev => (prev ?? []).filter(id => id !== targetId))
       } else {
         await followUser(user.id, targetId)
-        setFollowingIds(prev => [...prev, targetId])
+        setFollowingIds(prev => [...(prev ?? []), targetId])
       }
     } catch (err) { console.error(err) }
     finally { setFollowBusy(null) }
