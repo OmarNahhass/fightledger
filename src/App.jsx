@@ -10,6 +10,7 @@ import Activity from './pages/Activity'
 import Settings from './pages/Settings'
 import OpenParlays from './pages/OpenParlays'
 import Landing from './pages/Landing'
+import Wordmark from './components/Wordmark'
 
 const navSections = [
   {
@@ -34,9 +35,8 @@ function Logo() {
   const { isLoggedIn } = useAuth()
   // Signed-out users would just bounce off /dashboard to /login, so send them home instead
   return (
-    <Link to={isLoggedIn ? '/dashboard' : '/'} className="logo-link" aria-label="FightLedger home"
-      style={{ fontSize: '22px', fontWeight: '800', letterSpacing: '-0.3px', textDecoration: 'none' }}>
-      <span style={{ color: 'var(--text-primary)' }}>Fight</span><span style={{ color: 'var(--accent)' }}>Ledger</span>
+    <Link to={isLoggedIn ? '/dashboard' : '/'} className="logo-link" aria-label="FightLedger home" style={{ textDecoration: 'none' }}>
+      <Wordmark size={20} />
     </Link>
   )
 }

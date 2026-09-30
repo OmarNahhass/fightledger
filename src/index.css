@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,900&display=swap');
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -457,4 +457,38 @@ input:focus, select:focus, textarea:focus {
     transition: none;
     transform: none;
   }
+}
+
+/* FightLedger wordmark: "Fight" in heavy italic, "LEDGER" on a slanted red strip like a
+   fight-poster name banner. Sized in em, so set font-size on .wordmark to scale it. */
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.wordmark-fight {
+  color: var(--text-primary);
+}
+
+.wordmark-ledger {
+  display: inline-block;
+  padding: 0.12em 0.32em 0.14em;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 0.88em;
+  letter-spacing: 0.02em;
+  transform: skewX(-12deg);
+  box-shadow: 0.09em 0.09em 0 #9b1c26;
+}
+
+/* Un-skew the letters so only the strip is slanted */
+.wordmark-ledger > span {
+  display: inline-block;
+  transform: skewX(12deg);
 }

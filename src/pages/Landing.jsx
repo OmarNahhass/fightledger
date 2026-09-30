@@ -1,5 +1,6 @@
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
+import Wordmark from '../components/Wordmark'
 
 export default function Landing() {
   const { isLoggedIn } = useAuth()
@@ -57,7 +58,7 @@ export default function Landing() {
 
       {/* Footer */}
       <div style={{ borderTop: '1px solid #ebebeb', padding: '24px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#ffffff' }}>
-        <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>Fight<span style={{ color: 'var(--accent)' }}>Ledger</span></div>
+        <Wordmark size={16} ink="#1a1a1a" />
         <div style={{ fontSize: '12px', color: '#aaa' }}>© 2026 Omar Nahhas</div>
       </div>
     </div>
