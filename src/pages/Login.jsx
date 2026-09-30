@@ -62,7 +62,7 @@ export default function Login() {
           </div>
           <div>
             <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '500' }}>Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} style={inputStyle}
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={mode === 'signup' ? 8 : undefined} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} style={inputStyle}
               onFocus={e => e.target.style.borderColor = 'var(--text-primary)'}
               onBlur={e => e.target.style.borderColor = 'var(--border-input)'} />
           </div>

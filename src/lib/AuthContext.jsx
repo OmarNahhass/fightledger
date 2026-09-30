@@ -14,7 +14,7 @@ export function AuthProvider({ children }) {
       setSession(data.session ?? null)
       if (data.session) {
         ensureProfile(data.session.user.id, data.session.user.email.split('@')[0]).catch(console.error)
-        autoSettleBets().catch(console.error)
+        autoSettleBets(data.session.user.id).catch(console.error)
       }
     })
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -22,7 +22,7 @@ export function AuthProvider({ children }) {
       if (!session) clearQueryCache()
       if (session) {
         ensureProfile(session.user.id, session.user.email.split('@')[0]).catch(console.error)
-        autoSettleBets().catch(console.error)
+        autoSettleBets(session.user.id).catch(console.error)
       }
     })
     return () => listener.subscription.unsubscribe()

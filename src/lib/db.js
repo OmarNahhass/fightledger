@@ -62,8 +62,14 @@ export const updateProfile = async (
   if (error) throw error;
 };
 
+const AVATAR_TYPES = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+
 export const uploadAvatar = async (userId, file) => {
-  const ext = file.name.split(".").pop();
+  // Derive the extension from the MIME type, never the user-supplied file name
+  const ext = AVATAR_TYPES[file.type];
+  if (!ext) throw new Error("Avatar must be a PNG, JPEG, WebP or GIF image.");
+  if (file.size > AVATAR_MAX_BYTES) throw new Error("Avatar must be 2 MB or smaller.");
   const path = `${userId}/avatar.${ext}`;
   const { error } = await supabase.storage
     .from("avatars")
@@ -205,21 +211,23 @@ export const deleteBet = async (betId) => {
   if (error) throw error;
 };
 
-export const getPendingBetsWithFights = async () => {
+export const getPendingBetsWithFights = async (userId) => {
   const { data, error } = await supabase
     .from("bet_summary")
     .select("*")
     .eq("result", "pending")
+    .eq("user_id", userId)
     .not("fight_id", "is", null);
   if (error) throw error;
   return data;
 };
 
-export const getPendingParlays = async () => {
+export const getPendingParlays = async (userId) => {
   const { data, error } = await supabase
     .from("bets")
     .select("*")
     .eq("result", "pending")
+    .eq("user_id", userId)
     .eq("bet_type", "parlay")
     .is("fight_id", null);
   if (error) throw error;

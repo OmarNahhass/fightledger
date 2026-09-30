@@ -55,11 +55,13 @@ const buildWinnerMap = async (date) => {
   }
 };
 
-export const autoSettleBets = async () => {
+// Only ever touch the signed-in user's own bets
+export const autoSettleBets = async (userId) => {
+  if (!userId) return 0;
   try {
     const [pendingBets, pendingParlays] = await Promise.all([
-      getPendingBetsWithFights(),
-      getPendingParlays(),
+      getPendingBetsWithFights(userId),
+      getPendingParlays(userId),
     ]);
 
     const unitSize = await getUnitSize();

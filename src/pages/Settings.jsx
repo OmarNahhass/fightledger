@@ -76,7 +76,7 @@ export default function Settings() {
       const url = await uploadAvatar(user.id, file)
       setAvatarUrl(url)
       await updateProfile(user.id, { avatar_url: url })
-    } catch (err) { console.error(err) }
+    } catch (err) { console.error(err); alert(err.message) }
     finally { setUploadingAvatar(false) }
   }
 
@@ -133,7 +133,7 @@ export default function Settings() {
             <div>
               <label style={{ display: 'inline-block', background: 'var(--bg-hover)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                 {uploadingAvatar ? 'Uploading...' : 'Upload photo'}
-                <input type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleAvatarUpload} style={{ display: 'none' }} />
               </label>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>JPG, PNG up to 2MB</div>
             </div>
