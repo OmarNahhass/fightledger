@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .f { fill: #111827; }
+    @media (prefers-color-scheme: dark) { .f { fill: #e5e7eb; } }
+  </style>
+  <!-- F -->
+  <path class="f" d="M2 4h13v5H8v4h6v5H8v10H2z" />
+  <!-- L, in the brand red -->
+  <path fill="#e63946" d="M18 4h6v19h6v5H18z" />
+</svg>
