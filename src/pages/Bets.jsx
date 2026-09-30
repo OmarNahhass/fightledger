@@ -198,6 +198,7 @@ export default function Bets() {
   const [form, setForm] = useState(empty)
   const [customPick, setCustomPick] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [settling, setSettling] = useState(null)
   const [deleting, setDeleting] = useState(null)
   const [parlayLegs, setParlayLegs] = useState([{ ...emptyLeg }, { ...emptyLeg }])
@@ -258,7 +259,7 @@ export default function Bets() {
   const selectedFight = fights.find(f => f.id === form.fight_id)
 
   const resetAll = () => {
-    setStep(null); setSelectedEvent(null); setFights([]); setForm(empty)
+    setStep(null); setSelectedEvent(null); setFights([]); setForm(empty); setSaveError('')
     setCustomPick(false); setParlayLegs([{ ...emptyLeg }, { ...emptyLeg }])
   }
 
@@ -277,14 +278,29 @@ export default function Bets() {
     return form.pick
   }
 
+  // American odds are at least +100 or at most -100
+  const validOdds = (o) => o !== '' && Number.isFinite(Number(o)) && Math.abs(Number(o)) >= 100
+  const validStake = Number.isFinite(Number(form.stake_units)) && Number(form.stake_units) > 0
+
   // Every bet must be tied to a fight on the card so auto-settle can grade it
-  const validLegs = parlayLegs.filter(l => l.fight_id && l.pick && l.odds)
-  const canSave = form.bet_type === 'parlay'
-    ? validLegs.length >= 2 && validLegs.length === parlayLegs.length && !!form.stake_units
-    : !!form.fight_id && !!(form.bet_type === 'props' ? buildPropPick() : form.pick) && !!form.odds && !!form.stake_units
+  const validLegs = parlayLegs.filter(l => l.fight_id && l.pick && validOdds(l.odds))
+  const missingFields = form.bet_type === 'parlay'
+    ? [
+        validLegs.length !== parlayLegs.length && 'a fight, pick and valid odds (e.g. -150, +200) on every leg',
+        !validStake && 'a stake',
+      ]
+    : [
+        !form.fight_id && 'a fight',
+        !(form.bet_type === 'props' ? buildPropPick() : form.pick) && (form.bet_type === 'props' ? 'a prop' : 'a pick'),
+        !validOdds(form.odds) && 'valid odds (e.g. -150, +200)',
+        !validStake && 'a stake',
+      ]
+  const missing = missingFields.filter(Boolean)
+  const canSave = missing.length === 0
 
   const handleSubmit = async () => {
-    if (!canSave) return
+    if (!canSave) return setSaveError(`Still needed: ${missing.join(', ')}.`)
+    setSaveError('')
     const isParlay = form.bet_type === 'parlay'
     if (isParlay) {
       setSaving(true)
@@ -306,7 +322,7 @@ export default function Bets() {
         const newBet = await createBet(bet)
         setBets(prev => [newBet, ...prev])
         resetAll()
-      } catch (err) { console.error(err) }
+      } catch (err) { console.error(err); setSaveError(`Could not save bet: ${err.message}`) }
       finally { setSaving(false) }
       return
     }
@@ -326,7 +342,7 @@ export default function Bets() {
       const newBet = await createBet(bet)
       setBets(prev => [newBet, ...prev])
       resetAll()
-    } catch (err) { console.error(err) }
+    } catch (err) { console.error(err); setSaveError(`Could not save bet: ${err.message}`) }
     finally { setSaving(false) }
   }
 
@@ -380,6 +396,9 @@ export default function Bets() {
       if (!groups[key]) groups[key] = { eventName: key, eventDate: bet.event_date, bets: [] }
       groups[key].bets.push(bet)
     }
+    // Within an event, most recently placed first
+    const placedAt = (bet) => bet.placed_at ? new Date(bet.placed_at).getTime() : 0
+    for (const group of Object.values(groups)) group.bets.sort((a, b) => placedAt(b) - placedAt(a))
     return Object.values(groups).sort((a, b) => new Date(b.eventDate) - new Date(a.eventDate))
   }, [bets])
 
@@ -782,8 +801,9 @@ export default function Bets() {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={handleSubmit} disabled={saving || !canSave} style={{ ...btnPrimary, opacity: saving || !canSave ? 0.5 : 1, cursor: saving || !canSave ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save bet'}</button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {saveError && <div role="alert" style={{ flexBasis: '100%', fontSize: '12px', color: '#dc2626', background: '#fef2f2', padding: '8px 12px', borderRadius: '6px' }}>{saveError}</div>}
+            <button onClick={handleSubmit} disabled={saving} style={{ ...btnPrimary, opacity: saving || !canSave ? 0.5 : 1, cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Saving...' : 'Save bet'}</button>
             <button onClick={resetAll} style={btnGhost}>Cancel</button>
           </div>
         </div>

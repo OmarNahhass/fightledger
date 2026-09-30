@@ -1,6 +1,8 @@
 import {
   getPendingBetsWithFights,
   getPendingParlays,
+  getEvents,
+  getFightsForEvents,
   updateBetResult,
   getUnitSize,
 } from "./db";
@@ -22,15 +24,26 @@ const namesMatch = (pick, winner) => {
   return pLast.length > 2 && pLast === wLast;
 };
 
+// Notes look like "Leg 1: Pick (+odds) - A vs B | Leg 2: ..."
 const parseParlayLegs = (notes) => {
   if (!notes) return [];
   return notes
     .split(" | ")
     .map((legStr) => {
-      const match = legStr.match(/Leg \d+: (.+?) \([-+]?\d+\)/);
-      return match ? match[1].trim() : null;
+      const match = legStr.match(/Leg \d+: (.+?) \([-+]?\d+\)(?: - (.+))?$/);
+      return match ? { pick: match[1].trim(), fight: match[2]?.trim() } : null;
     })
     .filter(Boolean);
+};
+
+// Map "A vs B" -> event date for every fight on the user's events
+const buildFightDateMap = async () => {
+  const events = await getEvents();
+  const eventDates = new Map(events.map((e) => [e.id, e.event_date]));
+  const fights = await getFightsForEvents(events.map((e) => e.id));
+  return new Map(
+    fights.map((f) => [`${f.fighter_a} vs ${f.fighter_b}`, eventDates.get(f.event_id)]),
+  );
 };
 
 const buildWinnerMap = async (date) => {
@@ -114,36 +127,30 @@ export const autoSettleBets = async (userId) => {
     }
 
     // --- Parlays ---
+    // Parlays have no fight_id, so find each leg's event through its "A vs B" fight
+    const fightDates = pendingParlays.length ? await buildFightDateMap() : new Map();
+    const winnerMapsByDate = {};
+
     for (const bet of pendingParlays) {
       try {
         const legs = parseParlayLegs(bet.notes);
         if (!legs.length) continue;
 
-        // Use created_at date to find the right event
-        const dateStr = bet.created_at?.slice(0, 10);
-        if (!dateStr) continue;
-        if (new Date(dateStr) >= today) continue;
+        // Legacy legs saved without a fight can't be placed on a card; leave those for manual settling
+        const dates = [...new Set(legs.map((l) => fightDates.get(l.fight)))];
+        if (dates.some((d) => !d || new Date(d) >= today)) continue;
 
-        // Try the created_at date; fall back to checking a few days around it
-        let winnerMap = await buildWinnerMap(dateStr);
-
-        // If no results on that exact date, check up to 6 days prior (event may have been weekend before)
-        if (!Object.keys(winnerMap).length) {
-          for (let i = 1; i <= 6; i++) {
-            const d = new Date(dateStr);
-            d.setDate(d.getDate() - i);
-            const fallback = d.toISOString().slice(0, 10);
-            winnerMap = await buildWinnerMap(fallback);
-            if (Object.keys(winnerMap).length) break;
-          }
+        const winnerMap = {};
+        for (const date of dates) {
+          winnerMapsByDate[date] ??= await buildWinnerMap(date);
+          Object.assign(winnerMap, winnerMapsByDate[date]);
         }
-
         if (!Object.keys(winnerMap).length) continue;
 
         let allWin = true;
         let anyLoss = false;
 
-        for (const pick of legs) {
+        for (const { pick } of legs) {
           let legResult = null;
           for (const [fighter, winner] of Object.entries(winnerMap)) {
             if (namesMatch(pick, fighter) || namesMatch(pick, winner)) {
