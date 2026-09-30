@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getUnitSize, setUnitSize, getProfile, updateProfile, uploadAvatar } from '../lib/db'
 import { useAuth } from '../lib/AuthContext'
+import BetmmaImport from '../components/BetmmaImport'
 import emailjs from '@emailjs/browser'
 
 const EMAILJS_SERVICE_ID = 'service_ech9ex9'
@@ -170,6 +171,8 @@ export default function Settings() {
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>Current: 1u = ${Number(unitSize).toFixed(2)}</div>
         </div>
+
+        <BetmmaImport />
 
         {/* Contact form */}
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px' }}>

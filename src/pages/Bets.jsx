@@ -96,7 +96,11 @@ const fmtEventDate = (d) => parseLocalDate(d).toLocaleDateString('en-US', { week
 // Order-independent key so "A vs B" and "B vs A" count as the same bout
 const fightKey = (a, b) => [a, b].map(n => n.toLowerCase().trim()).sort().join('|')
 
-const fmtOdds = (odds) => `${Number(odds) > 0 ? '+' : ''}${odds}`
+// Imported odds keep their exact decimal conversion (e.g. -232.56); show them whole
+const fmtOdds = (odds) => {
+  const o = Math.round(Number(odds))
+  return `${o > 0 ? '+' : ''}${o}`
+}
 const fmtUnits = (u) => `${u >= 0 ? '+' : ''}${u.toFixed(2)}u`
 const fmtDollars = (d) => `${d < 0 ? '-' : ''}$${Math.abs(d).toFixed(2)}`
 const profitColor = (u) => u > 0 ? GREEN : u < 0 ? RED : 'var(--text-secondary)'
@@ -917,6 +921,7 @@ export default function Bets() {
                                 </span>
                               )}
                               {bet.confidence > 0 && <ConfidenceMeter value={bet.confidence} />}
+                              {bet.imported && <span style={{ color: 'var(--text-muted)' }}>Imported from betmma.tips</span>}
                             </div>
                             {parlay && expanded && (
                               <ol style={{ listStyle: 'none', marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '10px', borderLeft: '2px solid var(--border)' }}>

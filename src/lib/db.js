@@ -184,15 +184,20 @@ export const updateFightResult = async (
 
 // ── BETS ────────────────────────────────────────────
 
+// With a userId this is that user's own history, so it includes their imported bets.
+// Without one it feeds the leaderboard and stays live-tracked bets only.
 export const getBets = async (userId = null) => {
   let query = supabase
     .from("bet_summary")
     .select("*")
     .order("event_date", { ascending: false });
   if (userId) query = query.eq("user_id", userId);
-  const { data, error } = await query;
+  const [{ data, error }, imported] = await Promise.all([
+    query,
+    userId ? getImportedBets(userId) : [],
+  ]);
   if (error) throw error;
-  return data;
+  return imported.length ? [...data, ...imported] : data;
 };
 
 export const createBet = async (bet) => {
@@ -243,6 +248,67 @@ export const getPendingParlays = async (userId) => {
     .is("fight_id", null);
   if (error) throw error;
   return data;
+};
+
+// ── IMPORTED BETS ────────────────────────────────────
+// Private history brought in from betmma.tips. Row level security limits every
+// query to the signed-in user's own rows, and nothing public reads this table.
+
+const PAGE_SIZE = 1000; // Supabase's default max rows per request
+
+export const getImportedBets = async (userId) => {
+  const rows = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("imported_bets")
+      .select("*")
+      .eq("user_id", userId)
+      .order("event_date", { ascending: false })
+      .order("id")
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) {
+      // Before the imported_bets migration has been run, carry on without imports
+      if (error.code === "42P01" || error.code === "PGRST205") return [];
+      throw error;
+    }
+    rows.push(...data);
+    if (data.length < PAGE_SIZE) break;
+  }
+  return rows.map((b) => ({ ...b, imported: true }));
+};
+
+// Skips bets already imported (same source id), so re-importing a newer page only adds new bets
+export const importBets = async (bets) => {
+  const userId = await getUserId();
+  let added = 0;
+  for (let i = 0; i < bets.length; i += 500) {
+    const chunk = bets.slice(i, i + 500).map((b) => ({
+      user_id: userId,
+      source: b.source,
+      source_id: b.source_id,
+      event_name: b.event_name,
+      event_date: b.event_date,
+      bet_type: b.bet_type,
+      pick: b.pick,
+      odds: b.odds,
+      stake_units: b.stake_units,
+      result: b.result,
+      notes: b.notes,
+    }));
+    const { data, error } = await supabase
+      .from("imported_bets")
+      .upsert(chunk, { onConflict: "user_id,source,source_id", ignoreDuplicates: true })
+      .select("id");
+    if (error) throw error;
+    added += data.length;
+  }
+  return added;
+};
+
+export const deleteImportedBets = async () => {
+  const userId = await getUserId();
+  const { error } = await supabase.from("imported_bets").delete().eq("user_id", userId);
+  if (error) throw error;
 };
 
 // ── BANKROLL ─────────────────────────────────────────
