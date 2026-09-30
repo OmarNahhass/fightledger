@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { getBets, getEvents, createEvent, getFightsByEvent, createFight, createBet, updateBetResult, deleteBet, getUnitSize, setUnitSize as saveUnitSize } from '../lib/db'
+import { getBets, getEvents, createEvent, getFightsByEvent, getFightsForEvents, createFight, createBet, updateBetResult, deleteBet, getUnitSize, setUnitSize as saveUnitSize } from '../lib/db'
 import { useAuth } from '../lib/AuthContext'
 import { useCachedQuery } from '../lib/queryCache'
 import { getFightsByDate, getUpcomingEvents } from '../lib/mmaApi'
@@ -87,7 +87,7 @@ const SPORTSBOOK_DOMAINS = {
 
 const GREEN = '#16a34a'
 const RED = '#dc2626'
-const RESULT_COLORS = { win: GREEN, loss: RED, push: '#d97706', void: '#7c3aed', pending: 'var(--text-faint)' }
+const RESULT_COLORS = { win: GREEN, loss: RED, push: '#d97706', void: '#7c3aed', pending: '#2563eb' }
 
 // Event dates are stored as "YYYY-MM-DD"; new Date() would read that as UTC midnight, which is the previous day in the Americas
 const parseLocalDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T00:00:00`) : new Date(d)
@@ -117,6 +117,32 @@ const parseParlayLegs = (bet) => {
   }).filter(Boolean)
   if (fromNotes.length) return fromNotes
   return (bet.pick || '').split(' + ').map(pick => ({ pick }))
+}
+
+// Settling opens the day after the event, once every fight on the card is over
+const eventOver = (d) => parseLocalDate(d) < today
+
+// A moneyline leg's pick is one of the two fighters in its "A vs B" fight
+const isMoneylineLeg = (leg) => !!leg.fight && leg.fight.split(' vs ').includes(leg.pick)
+
+const ALL_RESULTS = ['win', 'loss', 'push', 'void']
+
+// Which manual results a pending bet may be given. Auto-settle grades moneyline
+// winners itself, so those only get push/void (draws, cancelled fights).
+const manualSettleOptions = (bet, eventDate) => {
+  if (!eventDate) return ALL_RESULTS // legacy bet saved without a fight: cannot auto-settle
+  if (!eventOver(eventDate)) return []
+  const autoGradable = isParlayBet(bet)
+    ? parseParlayLegs(bet).every(isMoneylineLeg)
+    : bet.bet_type !== 'props'
+  return autoGradable ? ['push', 'void'] : ALL_RESULTS
+}
+
+const SETTLE_BUTTONS = {
+  win: { label: 'Win', background: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
+  loss: { label: 'Loss', background: '#fef2f2', color: '#dc2626', border: '#fecaca' },
+  push: { label: 'Push', background: '#fffbeb', color: '#d97706', border: '#fde68a' },
+  void: { label: 'Void', background: '#f5f3ff', color: '#7c3aed', border: '#ddd6fe' },
 }
 
 const iconProps = { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }
@@ -305,6 +331,7 @@ export default function Bets() {
   }
 
   const handleSettle = async (betId, result, bet) => {
+    if (!settleOptionsFor(bet).includes(result)) return
     setSettling(betId)
     try {
       const units = Number(bet.stake_units || 0)
@@ -329,6 +356,22 @@ export default function Bets() {
   }
 
   const potentialUnits = calcPayoutUnits(form.stake_units, form.odds)
+
+  // Parlays have no fight_id, so resolve their event date from the "A vs B" fights in their legs
+  const hasPendingParlays = bets.some(b => b.result === 'pending' && isParlayBet(b))
+  const myEventIds = myEvents.map(e => e.id)
+  const legFightsQuery = useCachedQuery(['legFights', myEventIds], () => getFightsForEvents(myEventIds), { enabled: hasPendingParlays && myEventIds.length > 0 })
+  const fightEventDates = useMemo(() => {
+    const eventDates = new Map(myEvents.map(e => [e.id, e.event_date]))
+    return new Map((legFightsQuery.data ?? NO_ROWS).map(f => [`${f.fighter_a} vs ${f.fighter_b}`, eventDates.get(f.event_id)]))
+  }, [legFightsQuery.data, myEvents])
+
+  const settleOptionsFor = (bet) => {
+    if (!isParlayBet(bet)) return manualSettleOptions(bet, bet.event_date)
+    if (legFightsQuery.loading) return []
+    const dates = parseParlayLegs(bet).map(l => fightEventDates.get(l.fight)).filter(Boolean).sort()
+    return manualSettleOptions(bet, dates[dates.length - 1])
+  }
 
   const groupedBets = useMemo(() => {
     const groups = {}
@@ -878,10 +921,10 @@ export default function Bets() {
                               <span className="num" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--text-muted)', marginRight: '4px' }}>
                                 <ClockIcon /> to win {calcPayoutUnits(bet.stake_units, bet.odds).toFixed(2)}u
                               </span>
-                              <button onClick={() => handleSettle(bet.id, 'win', bet)} disabled={settling === bet.id} style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Win</button>
-                              <button onClick={() => handleSettle(bet.id, 'loss', bet)} disabled={settling === bet.id} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Loss</button>
-                              <button onClick={() => handleSettle(bet.id, 'push', bet)} disabled={settling === bet.id} style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Push</button>
-                              <button onClick={() => handleSettle(bet.id, 'void', bet)} disabled={settling === bet.id} style={{ background: '#f5f3ff', color: '#7c3aed', border: '1px solid #ddd6fe', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Void</button>
+                              {settleOptionsFor(bet).map(result => {
+                                const b = SETTLE_BUTTONS[result]
+                                return <button key={result} onClick={() => handleSettle(bet.id, result, bet)} disabled={settling === bet.id} style={{ background: b.background, color: b.color, border: `1px solid ${b.border}`, borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>{b.label}</button>
+                              })}
                               <button onClick={() => handleDelete(bet.id)} disabled={deleting === bet.id} aria-label="Delete bet" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px' }}>×</button>
                             </div>
                           ) : (

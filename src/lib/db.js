@@ -147,6 +147,17 @@ export const getFightsByEvent = async (eventId) => {
   return data;
 };
 
+// Fighter pairs for a set of events, used to find which event a parlay leg belongs to
+export const getFightsForEvents = async (eventIds) => {
+  if (!eventIds.length) return [];
+  const { data, error } = await supabase
+    .from("fights")
+    .select("fighter_a, fighter_b, event_id")
+    .in("event_id", eventIds);
+  if (error) throw error;
+  return data;
+};
+
 export const createFight = async (fight) => {
   const { data, error } = await supabase
     .from("fights")
