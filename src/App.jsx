@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import { useTheme } from './lib/ThemeContext'
 import Login from './pages/Login'
@@ -31,10 +31,13 @@ const navSections = [
 ]
 
 function Logo() {
+  const { isLoggedIn } = useAuth()
+  // Signed-out users would just bounce off /dashboard to /login, so send them home instead
   return (
-    <div style={{ fontSize: '22px', fontWeight: '800', letterSpacing: '-0.3px' }}>
+    <Link to={isLoggedIn ? '/dashboard' : '/'} className="logo-link" aria-label="FightLedger home"
+      style={{ fontSize: '22px', fontWeight: '800', letterSpacing: '-0.3px', textDecoration: 'none' }}>
       <span style={{ color: 'var(--text-primary)' }}>Fight</span><span style={{ color: 'var(--accent)' }}>Ledger</span>
-    </div>
+    </Link>
   )
 }
 
@@ -147,6 +150,19 @@ function Sidebar({ open, onClose }) {
             Sign in
           </NavLink>
         )}
+        {!isLoggedIn && (
+          <NavLink
+            to="/login?mode=signup"
+            style={{
+              display: 'block', width: '100%', textAlign: 'center', boxSizing: 'border-box',
+              marginTop: '8px', padding: '8px', borderRadius: '8px', fontSize: '13px',
+              fontWeight: '600', textDecoration: 'none',
+              border: '1px solid var(--sidebar-border)', color: 'var(--text-primary)',
+            }}
+          >
+            Get started
+          </NavLink>
+        )}
       </div>
     </aside>
   )
@@ -194,7 +210,8 @@ function Layout() {
       <main className="main-content" style={{ flex: 1, padding: '48px 56px', overflowY: 'auto', maxWidth: '960px', minWidth: 0 }}>
         <Routes>
           <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/login" element={<Login />} />
+          {/* Key on the query so switching between Sign in / Get started resets the form mode */}
+          <Route path="/login" element={<Login key={location.search} />} />
           <Route path="/" element={<Landing />} />
           <Route path="/dashboard" element={<RequireAuth redirectTo="/login"><Dashboard /></RequireAuth>} />
           <Route path="/bets" element={<RequireAuth redirectTo="/login"><Bets /></RequireAuth>} />

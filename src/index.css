@@ -354,3 +354,32 @@ input[type="number"]::-webkit-outer-spin-button {
 .bet-row:hover {
   background: var(--bg-hover);
 }
+
+/* Landing footer sits flush with the bottom of the page */
+.main-content:has(> .landing) {
+  padding-bottom: 0 !important;
+}
+
+/* Clickable logo: small lift on hover, press-down on click */
+.logo-link {
+  display: inline-block;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.logo-link:hover {
+  transform: translateY(-1px);
+  opacity: 0.85;
+}
+
+.logo-link:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-link,
+  .logo-link:hover,
+  .logo-link:active {
+    transition: none;
+    transform: none;
+  }
+}

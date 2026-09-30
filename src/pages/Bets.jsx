@@ -886,17 +886,17 @@ export default function Bets() {
                         <div key={bet.id} className="bet-row" style={{ padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid var(--border)', borderLeft: `3px solid ${RESULT_COLORS[bet.result] || 'var(--text-faint)'}` }}>
                           <div className="bet-row-main">
                             <div className="bet-row-top">
-                              <span className="bet-pick" style={{ fontSize: '14px', fontWeight: '600', color: bet.result === 'loss' ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{bet.pick}</span>
-                              {parlay && (
-                                <button onClick={() => toggleExpanded(bet.id)} aria-expanded={expanded} style={{
-                                  display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '700', letterSpacing: '0.5px',
-                                  color: 'var(--text-secondary)', background: 'var(--bg-hover)', border: 'none', borderRadius: '4px', padding: '3px 6px', cursor: 'pointer',
+                              {parlay ? (
+                                // The pick itself toggles the leg breakdown
+                                <button onClick={() => toggleExpanded(bet.id)} aria-expanded={expanded} aria-label={`${bet.pick}, show ${legs.length} legs`} className="bet-pick" style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left',
+                                  fontSize: '14px', fontWeight: '600', color: bet.result === 'loss' ? 'var(--text-secondary)' : 'var(--text-primary)',
                                 }}>
-                                  PARLAY · {legs.length} LEGS <ChevronIcon open={expanded} />
+                                  {bet.pick}
+                                  <span style={{ color: 'var(--text-muted)', display: 'inline-flex' }}><ChevronIcon open={expanded} /></span>
                                 </button>
-                              )}
-                              {!parlay && bet.bet_type && bet.bet_type !== 'moneyline' && (
-                                <span style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.5px', color: 'var(--text-secondary)', background: 'var(--bg-hover)', borderRadius: '4px', padding: '3px 6px' }}>PROP</span>
+                              ) : (
+                                <span className="bet-pick" style={{ fontSize: '14px', fontWeight: '600', color: bet.result === 'loss' ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{bet.pick}</span>
                               )}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px 12px', flexWrap: 'wrap', fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -905,12 +905,14 @@ export default function Bets() {
                               </span>
                               {bet.sportsbook && (
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: '600' }}>
-                                  <img
-                                    src={`https://www.google.com/s2/favicons?domain=${SPORTSBOOK_DOMAINS[bet.sportsbook] || 'google.com'}&sz=32`}
-                                    alt=""
-                                    style={{ width: '14px', height: '14px', borderRadius: '3px' }}
-                                    onError={e => e.target.style.display = 'none'}
-                                  />
+                                  {SPORTSBOOK_DOMAINS[bet.sportsbook] && (
+                                    <img
+                                      src={`https://www.google.com/s2/favicons?domain=${SPORTSBOOK_DOMAINS[bet.sportsbook]}&sz=32`}
+                                      alt=""
+                                      style={{ width: '14px', height: '14px', borderRadius: '3px' }}
+                                      onError={e => e.target.style.display = 'none'}
+                                    />
+                                  )}
                                   {bet.sportsbook}
                                 </span>
                               )}
