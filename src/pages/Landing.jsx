@@ -1,14 +1,12 @@
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
-import { useEffect } from 'react'
 
 export default function Landing() {
   const { isLoggedIn } = useAuth()
   const navigate = useNavigate()
 
-  useEffect(() => {
-    if (isLoggedIn) navigate('/dashboard')
-  }, [isLoggedIn])
+  // Redirect during render so signed-in users never see the landing page flash
+  if (isLoggedIn) return <Navigate to="/dashboard" replace />
 
   return (
     <div style={{
