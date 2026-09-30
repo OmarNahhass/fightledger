@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { getBets, getEvents, createEvent, getFightsByEvent, getFightsForEvents, createFight, createBet, updateBetResult, deleteBet, getUnitSize, setUnitSize as saveUnitSize } from '../lib/db'
+import { getBets, getEvents, createEvent, getFightsByEvent, createFight, createBet, updateBetResult, deleteBet, getUnitSize, setUnitSize as saveUnitSize } from '../lib/db'
 import { useAuth } from '../lib/AuthContext'
 import { useCachedQuery } from '../lib/queryCache'
 import { getFightsByDate, getUpcomingEvents } from '../lib/mmaApi'
@@ -122,19 +122,20 @@ const parseParlayLegs = (bet) => {
 // Settling opens the day after the event, once every fight on the card is over
 const eventOver = (d) => parseLocalDate(d) < today
 
-// A moneyline leg's pick is one of the two fighters in its "A vs B" fight
-const isMoneylineLeg = (leg) => !!leg.fight && leg.fight.split(' vs ').includes(leg.pick)
+// Parlay legs are picked from fixed lists, so any leg that isn't a prop is a fighter to win.
+// (bet_summary doesn't expose notes, so the leg's fight isn't available here.)
+const isMoneylineLeg = (leg) => !FIGHT_PROPS.includes(leg.pick) && !FIGHTER_PROPS.some(p => leg.pick.endsWith(` ${p}`))
 
 const ALL_RESULTS = ['win', 'loss', 'push', 'void']
 
 // Which manual results a pending bet may be given. Auto-settle grades moneyline
 // winners itself, so those only get push/void (draws, cancelled fights).
 const manualSettleOptions = (bet, eventDate) => {
-  if (!eventDate) return ALL_RESULTS // legacy bet saved without a fight: cannot auto-settle
+  if (!eventDate) return ALL_RESULTS // legacy bet saved without an event: cannot auto-settle
   if (!eventOver(eventDate)) return []
   const autoGradable = isParlayBet(bet)
     ? parseParlayLegs(bet).every(isMoneylineLeg)
-    : bet.bet_type !== 'props'
+    : bet.bet_type === 'moneyline'
   return autoGradable ? ['push', 'void'] : ALL_RESULTS
 }
 
@@ -298,6 +299,10 @@ export default function Bets() {
   const missing = missingFields.filter(Boolean)
   const canSave = missing.length === 0
 
+  // createBet returns the raw bets row; add the event fields bet_summary would provide
+  // so the new bet lands in the right group until the next reload
+  const withEvent = (bet) => ({ ...bet, event_name: selectedEvent.name, event_date: selectedEvent.event_date })
+
   const handleSubmit = async () => {
     if (!canSave) return setSaveError(`Still needed: ${missing.join(', ')}.`)
     setSaveError('')
@@ -313,14 +318,14 @@ export default function Bets() {
           return `Leg ${i + 1}: ${l.pick} (${Number(l.odds) > 0 ? '+' : ''}${l.odds})${fight ? ` - ${fight.fighter_a} vs ${fight.fighter_b}` : ''}`
         }).join(' | ')
         const bet = {
-          fight_id: null, bet_type: 'parlay',
+          fight_id: null, event_id: selectedEvent.id, bet_type: 'parlay',
           pick: validLegs.map(l => l.pick).join(' + '),
           odds, stake: units * unitSize, stake_units: units,
           potential_payout: potentialUnits * unitSize + units * unitSize,
           notes: legsSummary, sportsbook: form.sportsbook || null, confidence: form.confidence || null,
         }
         const newBet = await createBet(bet)
-        setBets(prev => [newBet, ...prev])
+        setBets(prev => [withEvent(newBet), ...prev])
         resetAll()
       } catch (err) { console.error(err); setSaveError(`Could not save bet: ${err.message}`) }
       finally { setSaving(false) }
@@ -334,13 +339,13 @@ export default function Bets() {
       const odds = Number(form.odds)
       const potentialUnits = calcPayoutUnits(units, odds)
       const bet = {
-        fight_id: form.fight_id, bet_type: form.bet_type,
+        fight_id: form.fight_id, event_id: selectedEvent.id, bet_type: form.bet_type,
         pick: finalPick, odds, stake: units * unitSize, stake_units: units,
         potential_payout: potentialUnits * unitSize + units * unitSize,
         notes: form.notes, sportsbook: form.sportsbook || null, confidence: form.confidence || null,
       }
       const newBet = await createBet(bet)
-      setBets(prev => [newBet, ...prev])
+      setBets(prev => [withEvent(newBet), ...prev])
       resetAll()
     } catch (err) { console.error(err); setSaveError(`Could not save bet: ${err.message}`) }
     finally { setSaving(false) }
@@ -373,21 +378,8 @@ export default function Bets() {
 
   const potentialUnits = calcPayoutUnits(form.stake_units, form.odds)
 
-  // Parlays have no fight_id, so resolve their event date from the "A vs B" fights in their legs
-  const hasPendingParlays = bets.some(b => b.result === 'pending' && isParlayBet(b))
-  const myEventIds = myEvents.map(e => e.id)
-  const legFightsQuery = useCachedQuery(['legFights', myEventIds], () => getFightsForEvents(myEventIds), { enabled: hasPendingParlays && myEventIds.length > 0 })
-  const fightEventDates = useMemo(() => {
-    const eventDates = new Map(myEvents.map(e => [e.id, e.event_date]))
-    return new Map((legFightsQuery.data ?? NO_ROWS).map(f => [`${f.fighter_a} vs ${f.fighter_b}`, eventDates.get(f.event_id)]))
-  }, [legFightsQuery.data, myEvents])
-
-  const settleOptionsFor = (bet) => {
-    if (!isParlayBet(bet)) return manualSettleOptions(bet, bet.event_date)
-    if (legFightsQuery.loading) return []
-    const dates = parseParlayLegs(bet).map(l => fightEventDates.get(l.fight)).filter(Boolean).sort()
-    return manualSettleOptions(bet, dates[dates.length - 1])
-  }
+  // bet_summary gives every bet an event_date: from its fight, or from bets.event_id for parlays
+  const settleOptionsFor = (bet) => manualSettleOptions(bet, bet.event_date)
 
   const groupedBets = useMemo(() => {
     const groups = {}
@@ -903,7 +895,7 @@ export default function Bets() {
                                   PARLAY · {legs.length} LEGS <ChevronIcon open={expanded} />
                                 </button>
                               )}
-                              {bet.bet_type === 'props' && (
+                              {!parlay && bet.bet_type && bet.bet_type !== 'moneyline' && (
                                 <span style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.5px', color: 'var(--text-secondary)', background: 'var(--bg-hover)', borderRadius: '4px', padding: '3px 6px' }}>PROP</span>
                               )}
                             </div>

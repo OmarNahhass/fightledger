@@ -36,14 +36,15 @@ const parseParlayLegs = (notes) => {
     .filter(Boolean);
 };
 
-// Map "A vs B" -> event date for every fight on the user's events
-const buildFightDateMap = async () => {
+// Event dates by event id, plus "A vs B" -> event date for every fight on the user's events
+const buildEventDateMaps = async () => {
   const events = await getEvents();
   const eventDates = new Map(events.map((e) => [e.id, e.event_date]));
   const fights = await getFightsForEvents(events.map((e) => e.id));
-  return new Map(
+  const fightDates = new Map(
     fights.map((f) => [`${f.fighter_a} vs ${f.fighter_b}`, eventDates.get(f.event_id)]),
   );
+  return { eventDates, fightDates };
 };
 
 const buildWinnerMap = async (date) => {
@@ -127,8 +128,10 @@ export const autoSettleBets = async (userId) => {
     }
 
     // --- Parlays ---
-    // Parlays have no fight_id, so find each leg's event through its "A vs B" fight
-    const fightDates = pendingParlays.length ? await buildFightDateMap() : new Map();
+    // Parlays have no fight_id: use their event_id, or for older parlays each leg's "A vs B" fight
+    const { eventDates, fightDates } = pendingParlays.length
+      ? await buildEventDateMaps()
+      : { eventDates: new Map(), fightDates: new Map() };
     const winnerMapsByDate = {};
 
     for (const bet of pendingParlays) {
@@ -136,8 +139,10 @@ export const autoSettleBets = async (userId) => {
         const legs = parseParlayLegs(bet.notes);
         if (!legs.length) continue;
 
-        // Legacy legs saved without a fight can't be placed on a card; leave those for manual settling
-        const dates = [...new Set(legs.map((l) => fightDates.get(l.fight)))];
+        // Parlays with neither can't be placed on a card; leave those for manual settling
+        const dates = bet.event_id
+          ? [eventDates.get(bet.event_id)]
+          : [...new Set(legs.map((l) => fightDates.get(l.fight)))];
         if (dates.some((d) => !d || new Date(d) >= today)) continue;
 
         const winnerMap = {};
