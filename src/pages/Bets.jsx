@@ -155,6 +155,39 @@ const PencilIcon = () => <svg {...iconProps} width={12} height={12}><path d="M12
 const ClockIcon = () => <svg {...iconProps}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
 const ChevronIcon = ({ open }) => <svg {...iconProps} width={12} height={12} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><path d="m6 9 6 6 6-6" /></svg>
 
+const DateTile = ({ date }) => {
+  const d = parseLocalDate(date)
+  return (
+    <div className="date-tile" aria-hidden="true">
+      <span className="date-tile-month">{d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}</span>
+      <span className="date-tile-day num">{d.getDate()}</span>
+    </div>
+  )
+}
+
+// "Today", "Tomorrow", "In 3 days" for events this week; nothing further out
+const soonLabel = (date) => {
+  const days = Math.round((parseLocalDate(date) - today) / 86400000)
+  if (days < 0 || days > 7) return null
+  return days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`
+}
+
+// Segmented buttons (bet type, prop type): the selected one takes the brand colour
+const choiceStyle = (active) => ({
+  padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s',
+  border: `1px solid ${active ? 'var(--accent-border)' : 'var(--border-input)'}`,
+  background: active ? 'var(--accent-soft)' : 'var(--bg-input)',
+  color: active ? 'var(--accent)' : 'var(--text-secondary)',
+})
+
+// Confidence boxes fill amber, matching the stars shown on saved bets
+const confidenceStyle = (active) => ({
+  width: '40px', height: '40px', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s',
+  border: `1px solid ${active ? '#f59e0b' : 'var(--border-input)'}`,
+  background: active ? '#f59e0b' : 'var(--bg-input)',
+  color: active ? '#ffffff' : 'var(--text-muted)',
+})
+
 const ConfidenceMeter = ({ value }) => (
   <span title={`Confidence ${value}/5`} aria-label={`Confidence ${value} out of 5`} style={{ fontSize: '12px', letterSpacing: '1px', lineHeight: 1 }}>
     {[1, 2, 3, 4, 5].map(n => <span key={n} style={{ color: n <= value ? '#f59e0b' : 'var(--text-faint)' }}>★</span>)}
@@ -201,7 +234,6 @@ export default function Bets() {
   const [addingEvent, setAddingEvent] = useState(null)
   const [fetchingFights, setFetchingFights] = useState(false)
   const [form, setForm] = useState(empty)
-  const [customPick, setCustomPick] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [settling, setSettling] = useState(null)
@@ -265,7 +297,7 @@ export default function Bets() {
 
   const resetAll = () => {
     setStep(null); setSelectedEvent(null); setFights([]); setForm(empty); setSaveError('')
-    setCustomPick(false); setParlayLegs([{ ...emptyLeg }, { ...emptyLeg }])
+    setParlayLegs([{ ...emptyLeg }, { ...emptyLeg }])
   }
 
   const updateLeg = (i, field, value) => {
@@ -289,6 +321,10 @@ export default function Bets() {
 
   // Every bet must be tied to a fight on the card so auto-settle can grade it
   const validLegs = parlayLegs.filter(l => l.fight_id && l.pick && validOdds(l.odds))
+  // Props must come from the lists; fighter props also need the fighter chosen
+  const validProp = form.prop_tier === 'fighter'
+    ? !!form.prop_fighter && FIGHTER_PROPS.includes(form.pick)
+    : FIGHT_PROPS.includes(form.pick)
   const missingFields = form.bet_type === 'parlay'
     ? [
         validLegs.length !== parlayLegs.length && 'a fight, pick and valid odds (e.g. -150, +200) on every leg',
@@ -296,7 +332,7 @@ export default function Bets() {
       ]
     : [
         !form.fight_id && 'a fight',
-        !(form.bet_type === 'props' ? buildPropPick() : form.pick) && (form.bet_type === 'props' ? 'a prop' : 'a pick'),
+        !(form.bet_type === 'props' ? validProp : form.pick) && (form.bet_type === 'props' ? 'a prop' : 'a pick'),
         !validOdds(form.odds) && 'valid odds (e.g. -150, +200)',
         !validStake && 'a stake',
       ]
@@ -488,19 +524,25 @@ export default function Bets() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {allUpcomingEvents.map(event => (
-              <div key={event.event_date || event.id}
+              <div key={event.event_date || event.id} className="event-option"
                 onClick={() => !addingEvent && handleSelectEvent(event)}
-                style={{ padding: '12px 16px', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '8px', cursor: addingEvent ? 'wait' : 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: addingEvent === event.event_date ? 0.5 : 1 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-input)'}>
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{event.name}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                style={{ cursor: addingEvent ? 'wait' : 'pointer', opacity: addingEvent === event.event_date ? 0.5 : 1 }}>
+                <DateTile date={event.event_date} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{event.name}</span>
+                    {soonLabel(event.event_date) && (
+                      <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--accent)', background: 'var(--accent-soft)', borderRadius: '999px', padding: '2px 8px' }}>
+                        {soonLabel(event.event_date)}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '3px' }}>
                     {fmtEventDate(event.event_date)}
                     {event.location && event.location !== 'TBD' && ` · ${event.location}`}
                   </div>
                 </div>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{addingEvent === event.event_date ? '...' : '→'}</span>
+                <span className="event-option-arrow">{addingEvent === event.event_date ? '...' : '→'}</span>
               </div>
             ))}
           </div>
@@ -511,10 +553,13 @@ export default function Bets() {
       {step === 'fill-form' && selectedEvent && (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{selectedEvent.name}</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                {fmtEventDate(selectedEvent.event_date)}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+              <DateTile date={selectedEvent.event_date} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{selectedEvent.name}</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  {fmtEventDate(selectedEvent.event_date)}
+                </div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -536,8 +581,8 @@ export default function Bets() {
             <div style={{ display: 'flex', gap: '8px' }}>
               {BET_TYPES.map(t => (
                 <button key={t} type="button"
-                  onClick={() => { setForm(f => ({ ...f, bet_type: t, pick: '', prop_tier: 'fight', prop_fighter: '' })); setCustomPick(false) }}
-                  style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', border: '1px solid var(--border-input)', cursor: 'pointer', background: form.bet_type === t ? 'var(--text-primary)' : 'var(--bg-input)', color: form.bet_type === t ? 'var(--bg)' : 'var(--text-secondary)', transition: 'all 0.15s' }}>
+                  onClick={() => { setForm(f => ({ ...f, bet_type: t, pick: '', prop_tier: 'fight', prop_fighter: '' })) }}
+                  aria-pressed={form.bet_type === t} style={choiceStyle(form.bet_type === t)}>
                   {t === 'moneyline' ? 'Moneyline' : t === 'parlay' ? 'Parlay' : 'Props'}
                 </button>
               ))}
@@ -629,7 +674,7 @@ export default function Bets() {
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     {[1,2,3,4,5].map(n => (
                       <button key={n} type="button" onClick={() => setForm(f => ({ ...f, confidence: f.confidence === n ? 0 : n }))}
-                        style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-input)', background: form.confidence >= n ? 'var(--text-primary)' : 'var(--bg-input)', color: form.confidence >= n ? 'var(--bg)' : 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s' }}>
+                        aria-pressed={form.confidence >= n} style={confidenceStyle(form.confidence >= n)}>
                         {n}
                       </button>
                     ))}
@@ -654,7 +699,7 @@ export default function Bets() {
                   {['fight','fighter'].map(tier => (
                     <button key={tier} type="button"
                       onClick={() => setForm(f => ({ ...f, prop_tier: tier, pick: '', prop_fighter: '' }))}
-                      style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', border: '1px solid var(--border-input)', cursor: 'pointer', background: form.prop_tier === tier ? 'var(--text-primary)' : 'var(--bg-input)', color: form.prop_tier === tier ? 'var(--bg)' : 'var(--text-secondary)', transition: 'all 0.15s' }}>
+                      aria-pressed={form.prop_tier === tier} style={choiceStyle(form.prop_tier === tier)}>
                       {tier === 'fight' ? 'Fight Prop' : 'Fighter Prop'}
                     </button>
                   ))}
@@ -674,24 +719,11 @@ export default function Bets() {
               )}
               <div style={{ gridColumn: form.prop_tier === 'fighter' ? '2 / -1' : '1 / -1' }}>
                 <label style={labelStyle}>{form.prop_tier === 'fighter' ? 'Fighter Prop *' : 'Fight Prop *'}</label>
-                {!customPick ? (
-                  <div>
-                    <select value={form.pick} onChange={e => {
-                      if (e.target.value === '__custom') { setCustomPick(true); setForm(f => ({ ...f, pick: '' })) }
-                      else setForm(f => ({ ...f, pick: e.target.value }))
-                    }} style={selectStyle}>
-                      <option value="">Select prop</option>
-                      {(form.prop_tier === 'fighter' ? FIGHTER_PROPS : FIGHT_PROPS).map(o => <option key={o} value={o}>{o}</option>)}
-                      <option value="__custom">Other (type manually)</option>
-                    </select>
-                    <button type="button" onClick={() => setCustomPick(true)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px', marginTop: '4px' }}>Type manually →</button>
-                  </div>
-                ) : (
-                  <div>
-                    <input value={form.pick} onChange={e => setForm(f => ({ ...f, pick: e.target.value }))} placeholder="Type your prop..." style={inputStyle} />
-                    <button type="button" onClick={() => { setCustomPick(false); setForm(f => ({ ...f, pick: '' })) }} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px', marginTop: '4px' }}>← Choose from list</button>
-                  </div>
-                )}
+                {/* Props come only from the fixed lists, so every prop bet uses the same wording */}
+                <select value={form.pick} onChange={e => setForm(f => ({ ...f, pick: e.target.value }))} style={selectStyle}>
+                  <option value="">Select prop</option>
+                  {(form.prop_tier === 'fighter' ? FIGHTER_PROPS : FIGHT_PROPS).map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
               </div>
               {(form.prop_tier === 'fight' ? form.pick : (form.prop_fighter && form.pick)) && (
                 <div style={{ gridColumn: '1 / -1', background: 'var(--bg-hover)', border: '1px solid var(--border-input)', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: 'var(--text-primary)' }}>
@@ -725,7 +757,7 @@ export default function Bets() {
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   {[1,2,3,4,5].map(n => (
                     <button key={n} type="button" onClick={() => setForm(f => ({ ...f, confidence: f.confidence === n ? 0 : n }))}
-                      style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-input)', background: form.confidence >= n ? 'var(--text-primary)' : 'var(--bg-input)', color: form.confidence >= n ? 'var(--bg)' : 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s' }}>
+                      aria-pressed={form.confidence >= n} style={confidenceStyle(form.confidence >= n)}>
                       {n}
                     </button>
                   ))}
@@ -783,7 +815,7 @@ export default function Bets() {
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   {[1,2,3,4,5].map(n => (
                     <button key={n} type="button" onClick={() => setForm(f => ({ ...f, confidence: f.confidence === n ? 0 : n }))}
-                      style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-input)', background: form.confidence >= n ? 'var(--text-primary)' : 'var(--bg-input)', color: form.confidence >= n ? 'var(--bg)' : 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s' }}>
+                      aria-pressed={form.confidence >= n} style={confidenceStyle(form.confidence >= n)}>
                       {n}
                     </button>
                   ))}
@@ -799,7 +831,7 @@ export default function Bets() {
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {saveError && <div role="alert" style={{ flexBasis: '100%', fontSize: '12px', color: '#dc2626', background: '#fef2f2', padding: '8px 12px', borderRadius: '6px' }}>{saveError}</div>}
-            <button onClick={handleSubmit} disabled={saving} style={{ ...btnPrimary, opacity: saving || !canSave ? 0.5 : 1, cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Saving...' : 'Save bet'}</button>
+            <button onClick={handleSubmit} disabled={saving} style={{ ...btnPrimary, background: 'var(--accent)', color: '#ffffff', opacity: saving || !canSave ? 0.5 : 1, cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Saving...' : 'Save bet'}</button>
             <button onClick={resetAll} style={btnGhost}>Cancel</button>
           </div>
         </div>
@@ -858,14 +890,17 @@ export default function Bets() {
                 const hasSettled = wins + losses > 0
                 return (
                   <div key={group.eventName} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-                    <div className="bet-group-header" style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
-                      <div>
-                        <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }}>{group.eventName}</div>
-                        {group.eventDate && (
-                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                            {fmtEventDate(group.eventDate)}
-                          </div>
-                        )}
+                    <div className="bet-group-header" style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg-input)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                        {group.eventDate && <DateTile date={group.eventDate} />}
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>{group.eventName}</div>
+                          {group.eventDate && (
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                              {fmtEventDate(group.eventDate)}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div className="bet-group-stats" style={{ alignItems: 'center' }}>
                         {hasSettled && <span className="num" style={{ fontWeight: '600' }}>{wins}–{losses}</span>}

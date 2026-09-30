@@ -14,6 +14,8 @@
   --text-muted: #9ca3af;
   --text-faint: #d1d5db;
   --accent: #e63946;
+  --accent-soft: rgba(230, 57, 70, 0.08);
+  --accent-border: rgba(230, 57, 70, 0.35);
   --sidebar-bg: #ffffff;
   --sidebar-border: #e5e7eb;
   --nav-active-bg: #f0f0f0;
@@ -35,6 +37,8 @@
   --text-muted: #444;
   --text-faint: #333;
   --accent: #e63946;
+  --accent-soft: rgba(230, 57, 70, 0.14);
+  --accent-border: rgba(230, 57, 70, 0.45);
   --sidebar-bg: #0d0d0d;
   --sidebar-border: #1a1a1a;
   --nav-active-bg: #1a1a1a;
@@ -379,6 +383,77 @@ input[type="number"]::-webkit-outer-spin-button {
   .logo-link,
   .logo-link:hover,
   .logo-link:active {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* Text fields light up in the brand colour while you type */
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent-border) !important;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Add-bet event picker */
+.event-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.event-option:hover {
+  border-color: var(--accent-border);
+  background: var(--bg-card);
+}
+
+.event-option-arrow {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: transform 0.15s, color 0.15s;
+}
+
+.event-option:hover .event-option-arrow {
+  color: var(--accent);
+  transform: translateX(3px);
+}
+
+.date-tile {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.date-tile-month {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+}
+
+.date-tile-day {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-option-arrow,
+  .event-option:hover .event-option-arrow {
     transition: none;
     transform: none;
   }
