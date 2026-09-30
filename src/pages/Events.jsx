@@ -1,17 +1,12 @@
 import { useEffect, useState } from 'react'
 import { getEvents, createEvent, deleteEvent, getFightsByEvent, createFight } from '../lib/db'
-import { getFightsByDate } from '../lib/mmaApi'
+import { useCachedQuery } from '../lib/queryCache'
+import { getFightsByDate, getUpcomingEvents } from '../lib/mmaApi'
 
-const UPCOMING_UFC_EVENTS = [
-  { name: 'UFC Fight Night: Fiziev vs Torres', promotion: 'UFC', event_date: '2026-06-27', location: 'Baku, Azerbaijan', status: 'upcoming' },
-  { name: 'UFC 329: McGregor vs Holloway 2', promotion: 'UFC', event_date: '2026-07-11', location: 'Las Vegas, NV', status: 'upcoming' },
-  { name: 'UFC Fight Night: Du Plessis vs Usman', promotion: 'UFC', event_date: '2026-07-18', location: 'TBD', status: 'upcoming' },
-  { name: 'UFC Fight Night: Ankalaev vs Rountree Jr', promotion: 'UFC', event_date: '2026-07-25', location: 'Abu Dhabi, UAE', status: 'upcoming' },
-  { name: 'UFC Fight Night: Serbia', promotion: 'UFC', event_date: '2026-08-01', location: 'Serbia', status: 'upcoming' },
-  { name: 'UFC Fight Night: Gamrot vs Salkilld', promotion: 'UFC', event_date: '2026-08-08', location: 'TBD', status: 'upcoming' },
-  { name: 'UFC 330: Makhachev vs Machado Garry', promotion: 'UFC', event_date: '2026-08-15', location: 'Philadelphia, PA', status: 'upcoming' },
-  { name: 'UFC Fight Night: TBD', promotion: 'UFC', event_date: '2026-09-05', location: 'TBD', status: 'upcoming' },
-]
+const NO_ROWS = []
+
+// Event dates are "YYYY-MM-DD"; new Date() would read that as UTC midnight, which is the previous day in the Americas
+const parseLocalDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T00:00:00`) : new Date(d)
 
 const WEIGHT_CLASSES = ['Strawweight', 'Flyweight', 'Bantamweight', 'Featherweight', 'Lightweight', 'Welterweight', 'Middleweight', 'Light Heavyweight', 'Heavyweight']
 
@@ -51,6 +46,7 @@ export default function Events() {
   const [fetchingFights, setFetchingFights] = useState(null)
   const [addingEvent, setAddingEvent] = useState(null)
   const [tab, setTab] = useState('upcoming')
+  const ufcQuery = useCachedQuery(['ufcCalendar'], getUpcomingEvents)
 
   useEffect(() => {
     getEvents().then(setMyEvents).catch(console.error).finally(() => setLoading(false))
@@ -107,7 +103,7 @@ export default function Events() {
     try {
       const apiFights = await getFightsByDate(event.event_date)
       if (!apiFights.length) {
-        alert('No fights found from the API for this date yet. Try closer to the event date.')
+        alert('No fights have been announced for this event yet.')
         return
       }
       let created = 0
@@ -135,7 +131,7 @@ export default function Events() {
   }
 
   const myEventDates = new Set(myEvents.map(e => e.event_date))
-  const futureEvents = UPCOMING_UFC_EVENTS.filter(e => new Date(e.event_date) >= new Date())
+  const futureEvents = ufcQuery.data ?? NO_ROWS
 
   if (loading) return <div style={{ color: '#555', fontSize: '13px' }}>Loading...</div>
 
@@ -172,6 +168,8 @@ export default function Events() {
       {/* Upcoming UFC Events tab */}
       {tab === 'upcoming' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {ufcQuery.loading && <div style={{ color: '#555', fontSize: '13px' }}>Loading UFC schedule...</div>}
+          {ufcQuery.error && !futureEvents.length && <div style={{ color: '#555', fontSize: '13px' }}>Could not load the UFC schedule. Try again later.</div>}
           {futureEvents.map(event => {
             const alreadyAdded = myEventDates.has(event.event_date)
             return (
@@ -179,7 +177,7 @@ export default function Events() {
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: '500', color: '#c8c8c8', marginBottom: '4px' }}>{event.name}</div>
                   <div style={{ fontSize: '11px', color: '#444' }}>
-                    {new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                    {parseLocalDate(event.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                     {event.location !== 'TBD' && ` · ${event.location}`}
                   </div>
                 </div>

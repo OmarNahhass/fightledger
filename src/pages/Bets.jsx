@@ -2,16 +2,8 @@ import { useState, useMemo } from 'react'
 import { getBets, getEvents, createEvent, getFightsByEvent, createFight, createBet, updateBetResult, deleteBet, getUnitSize, setUnitSize as saveUnitSize } from '../lib/db'
 import { useAuth } from '../lib/AuthContext'
 import { useCachedQuery } from '../lib/queryCache'
-import { getFightsByDate } from '../lib/mmaApi'
+import { getFightsByDate, getUpcomingEvents } from '../lib/mmaApi'
 import { exportBetsToCSV } from '../lib/exportCSV'
-
-const UPCOMING_UFC_EVENTS = [
-  { name: 'UFC Fight Night: Ankalaev vs. Guskov', promotion: 'UFC', event_date: '2026-07-25', location: 'Abu Dhabi, UAE', status: 'upcoming' },
-  { name: 'UFC Fight Night: Medić vs. Rodriguez', promotion: 'UFC', event_date: '2026-08-01', location: 'Serbia', status: 'upcoming' },
-  { name: 'UFC Fight Night: Gamrot vs Salkilld', promotion: 'UFC', event_date: '2026-08-08', location: 'TBD', status: 'upcoming' },
-  { name: 'UFC 330: Makhachev vs. Machado Garry', promotion: 'UFC', event_date: '2026-08-15', location: 'Philadelphia, PA', status: 'upcoming' },
-  { name: 'UFC Fight Night: Hernandez vs. Rodrigues', promotion: 'UFC', event_date: '2026-08-23', location: 'TBD', status: 'upcoming' },
-]
 
 const NO_ROWS = []
 
@@ -101,6 +93,9 @@ const RESULT_COLORS = { win: GREEN, loss: RED, push: '#d97706', void: '#7c3aed',
 const parseLocalDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T00:00:00`) : new Date(d)
 const fmtEventDate = (d) => parseLocalDate(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
 
+// Order-independent key so "A vs B" and "B vs A" count as the same bout
+const fightKey = (a, b) => [a, b].map(n => n.toLowerCase().trim()).sort().join('|')
+
 const fmtOdds = (odds) => `${Number(odds) > 0 ? '+' : ''}${odds}`
 const fmtUnits = (u) => `${u >= 0 ? '+' : ''}${u.toFixed(2)}u`
 const fmtDollars = (d) => `${d < 0 ? '-' : ''}$${Math.abs(d).toFixed(2)}`
@@ -161,6 +156,7 @@ export default function Bets() {
   const betsQuery = useCachedQuery(['bets', user?.id], () => getBets(user.id), { enabled: !!user })
   const eventsQuery = useCachedQuery(['events', user?.id], getEvents, { enabled: !!user })
   const unitQuery = useCachedQuery(['unitSize', user?.id], getUnitSize, { enabled: !!user })
+  const ufcQuery = useCachedQuery(['ufcCalendar'], getUpcomingEvents)
   const bets = betsQuery.data ?? NO_ROWS
   const myEvents = eventsQuery.data ?? NO_ROWS
   const unitSize = unitQuery.data ?? 10
@@ -194,7 +190,7 @@ export default function Bets() {
 
   const myEventDates = new Set(myEvents.map(e => e.event_date))
   const futureTrackedEvents = myEvents.filter(e => new Date(e.event_date) >= today)
-  const futureEvents = UPCOMING_UFC_EVENTS.filter(e => new Date(e.event_date) >= today)
+  const futureEvents = ufcQuery.data ?? NO_ROWS
 
   const allUpcomingEvents = [
     ...futureTrackedEvents,
@@ -212,19 +208,21 @@ export default function Bets() {
       setSelectedEvent(event)
       setFetchingFights(true)
       let eventFights = await getFightsByEvent(event.id)
-      if (!eventFights.length) {
-        try {
-          const apiFights = await getFightsByDate(event.event_date)
-          for (const [i, f] of apiFights.entries()) {
-            const fighterA = f.fighters?.first?.name
-            const fighterB = f.fighters?.second?.name
-            if (!fighterA || !fighterB) continue
-            const winner = f.fighters?.first?.winner ? fighterA : f.fighters?.second?.winner ? fighterB : null
-            await createFight({ event_id: event.id, fighter_a: fighterA, fighter_b: fighterB, weight_class: f.category || '', rounds: 3, fight_order: i + 1, winner })
-          }
-          eventFights = await getFightsByEvent(event.id)
-        } catch (err) { console.error('Could not auto-fetch fights:', err) }
-      }
+      // Cards fill in over the weeks before an event, so add any bouts announced since the last visit
+      try {
+        const apiFights = await getFightsByDate(event.event_date)
+        const known = new Set(eventFights.map(f => fightKey(f.fighter_a, f.fighter_b)))
+        let added = 0
+        for (const [i, f] of apiFights.entries()) {
+          const fighterA = f.fighters?.first?.name
+          const fighterB = f.fighters?.second?.name
+          if (!fighterA || !fighterB || known.has(fightKey(fighterA, fighterB))) continue
+          const winner = f.fighters?.first?.winner ? fighterA : f.fighters?.second?.winner ? fighterB : null
+          await createFight({ event_id: event.id, fighter_a: fighterA, fighter_b: fighterB, weight_class: f.category || '', rounds: 3, fight_order: i + 1, winner })
+          added++
+        }
+        if (added) eventFights = await getFightsByEvent(event.id)
+      } catch (err) { console.error('Could not auto-fetch fights:', err) }
       setFights(eventFights)
       setStep('fill-form')
     } catch (err) { console.error(err) }
@@ -253,11 +251,16 @@ export default function Bets() {
     return form.pick
   }
 
+  // Every bet must be tied to a fight on the card so auto-settle can grade it
+  const validLegs = parlayLegs.filter(l => l.fight_id && l.pick && l.odds)
+  const canSave = form.bet_type === 'parlay'
+    ? validLegs.length >= 2 && validLegs.length === parlayLegs.length && !!form.stake_units
+    : !!form.fight_id && !!(form.bet_type === 'props' ? buildPropPick() : form.pick) && !!form.odds && !!form.stake_units
+
   const handleSubmit = async () => {
+    if (!canSave) return
     const isParlay = form.bet_type === 'parlay'
     if (isParlay) {
-      const validLegs = parlayLegs.filter(l => l.pick && l.odds)
-      if (validLegs.length < 2 || !form.stake_units) return
       setSaving(true)
       try {
         const units = Number(form.stake_units)
@@ -283,14 +286,13 @@ export default function Bets() {
     }
 
     const finalPick = form.bet_type === 'props' ? buildPropPick() : form.pick
-    if (!finalPick || !form.odds || !form.stake_units) return
     setSaving(true)
     try {
       const units = Number(form.stake_units)
       const odds = Number(form.odds)
       const potentialUnits = calcPayoutUnits(units, odds)
       const bet = {
-        fight_id: form.fight_id || null, bet_type: form.bet_type,
+        fight_id: form.fight_id, bet_type: form.bet_type,
         pick: finalPick, odds, stake: units * unitSize, stake_units: units,
         potential_payout: potentialUnits * unitSize + units * unitSize,
         notes: form.notes, sportsbook: form.sportsbook || null, confidence: form.confidence || null,
@@ -370,6 +372,7 @@ export default function Bets() {
   const isParlay = form.bet_type === 'parlay'
   const isProps = form.bet_type === 'props'
   const labelStyle = { fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }
+  const optionalTag = { textTransform: 'none', letterSpacing: 0, fontWeight: '400', color: 'var(--text-muted)' }
 
   return (
     <div>
@@ -453,7 +456,7 @@ export default function Bets() {
             <div>
               <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{selectedEvent.name}</div>
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                {new Date(selectedEvent.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                {fmtEventDate(selectedEvent.event_date)}
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -463,6 +466,11 @@ export default function Bets() {
           </div>
 
           {fetchingFights && <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>Loading fights...</div>}
+          {!fetchingFights && !fights.length && (
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', background: 'var(--bg-hover)', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px' }}>
+              No fights have been announced for this event yet. Check back once the card is posted.
+            </div>
+          )}
 
           {/* Bet type toggle */}
           <div style={{ marginBottom: '20px' }}>
@@ -494,17 +502,17 @@ export default function Bets() {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px', gap: '8px' }}>
                       <div>
-                        <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fight</label>
-                        <select value={leg.fight_id} onChange={e => updateLeg(i, 'fight_id', e.target.value)} style={{ ...selectStyle, fontSize: '12px', padding: '7px 10px' }}>
-                          <option value="">Any fight</option>
+                        <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fight *</label>
+                        <select value={leg.fight_id} onChange={e => updateLeg(i, 'fight_id', e.target.value)} disabled={!fights.length} style={{ ...selectStyle, fontSize: '12px', padding: '7px 10px' }}>
+                          <option value="">Select fight</option>
                           {fights.map(f => <option key={f.id} value={f.id}>{f.fighter_a} vs {f.fighter_b}</option>)}
                         </select>
                       </div>
                       <div>
                         <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pick *</label>
-                        {legFight ? (
-                          <select value={leg.pick} onChange={e => updateLeg(i, 'pick', e.target.value)} style={{ ...selectStyle, fontSize: '12px', padding: '7px 10px' }}>
-                            <option value="">Select</option>
+                        <select value={leg.pick} onChange={e => updateLeg(i, 'pick', e.target.value)} disabled={!legFight} style={{ ...selectStyle, fontSize: '12px', padding: '7px 10px', opacity: legFight ? 1 : 0.5 }}>
+                          <option value="">{legFight ? 'Select' : 'Pick a fight first'}</option>
+                          {legFight && <>
                             <option value={legFight.fighter_a}>{legFight.fighter_a}</option>
                             <option value={legFight.fighter_b}>{legFight.fighter_b}</option>
                             <optgroup label="Fighter A Props">
@@ -516,14 +524,12 @@ export default function Bets() {
                             <optgroup label="Fight Props">
                               {FIGHT_PROPS.map(o => <option key={o} value={o}>{o}</option>)}
                             </optgroup>
-                          </select>
-                        ) : (
-                          <input value={leg.pick} onChange={e => updateLeg(i, 'pick', e.target.value)} placeholder="e.g. Makhachev" style={{ ...inputStyle, fontSize: '12px', padding: '7px 10px' }} />
-                        )}
+                          </>}
+                        </select>
                       </div>
                       <div>
                         <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Odds *</label>
-                        <input value={leg.odds} onChange={e => updateLeg(i, 'odds', e.target.value)} placeholder="-150" style={{ ...inputStyle, fontSize: '12px', padding: '7px 10px' }} />
+                        <input value={leg.odds} onChange={e => updateLeg(i, 'odds', e.target.value)} style={{ ...inputStyle, fontSize: '12px', padding: '7px 10px' }} />
                       </div>
                     </div>
                   </div>
@@ -551,12 +557,12 @@ export default function Bets() {
               <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
                 <div>
                   <label style={labelStyle}>Stake (units) *</label>
-                  <input value={form.stake_units} onChange={e => setForm(f => ({ ...f, stake_units: e.target.value }))} placeholder={`e.g. 1 = $${unitSize}`} style={inputStyle} />
+                  <input value={form.stake_units} onChange={e => setForm(f => ({ ...f, stake_units: e.target.value }))} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Sportsbook</label>
+                  <label style={labelStyle}>Sportsbook <span style={optionalTag}>(optional)</span></label>
                   <select value={form.sportsbook} onChange={e => setForm(f => ({ ...f, sportsbook: e.target.value }))} style={selectStyle}>
-                    <option value="">Select (optional)</option>
+                    <option value="">Select</option>
                     {SPORTSBOOKS.map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
@@ -578,9 +584,9 @@ export default function Bets() {
           ) : isProps ? (
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={labelStyle}>Fight</label>
-                <select value={form.fight_id} onChange={e => setForm(f => ({ ...f, fight_id: e.target.value, pick: '', prop_fighter: '' }))} style={{ ...selectStyle, opacity: fights.length ? 1 : 0.5 }}>
-                  <option value="">Select fight (optional)</option>
+                <label style={labelStyle}>Fight *</label>
+                <select value={form.fight_id} onChange={e => setForm(f => ({ ...f, fight_id: e.target.value, pick: '', prop_fighter: '' }))} disabled={!fights.length} style={{ ...selectStyle, opacity: fights.length ? 1 : 0.5 }}>
+                  <option value="">Select fight</option>
                   {fights.map(f => <option key={f.id} value={f.id}>{f.fighter_a} vs {f.fighter_b}</option>)}
                 </select>
               </div>
@@ -599,15 +605,13 @@ export default function Bets() {
               {form.prop_tier === 'fighter' && (
                 <div>
                   <label style={labelStyle}>Fighter *</label>
-                  {selectedFight ? (
-                    <select value={form.prop_fighter} onChange={e => setForm(f => ({ ...f, prop_fighter: e.target.value, pick: '' }))} style={selectStyle}>
-                      <option value="">Select fighter</option>
+                  <select value={form.prop_fighter} onChange={e => setForm(f => ({ ...f, prop_fighter: e.target.value, pick: '' }))} disabled={!selectedFight} style={{ ...selectStyle, opacity: selectedFight ? 1 : 0.5 }}>
+                    <option value="">{selectedFight ? 'Select fighter' : 'Pick a fight first'}</option>
+                    {selectedFight && <>
                       <option value={selectedFight.fighter_a}>{selectedFight.fighter_a}</option>
                       <option value={selectedFight.fighter_b}>{selectedFight.fighter_b}</option>
-                    </select>
-                  ) : (
-                    <input value={form.prop_fighter} onChange={e => setForm(f => ({ ...f, prop_fighter: e.target.value }))} placeholder="e.g. Islam Makhachev" style={inputStyle} />
-                  )}
+                    </>}
+                  </select>
                 </div>
               )}
               <div style={{ gridColumn: form.prop_tier === 'fighter' ? '2 / -1' : '1 / -1' }}>
@@ -639,16 +643,16 @@ export default function Bets() {
               )}
               <div>
                 <label style={labelStyle}>Odds (American) *</label>
-                <input value={form.odds} onChange={e => setForm(f => ({ ...f, odds: e.target.value }))} placeholder="-150 or +200" style={inputStyle} />
+                <input value={form.odds} onChange={e => setForm(f => ({ ...f, odds: e.target.value }))} style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>Stake (units) *</label>
-                <input value={form.stake_units} onChange={e => setForm(f => ({ ...f, stake_units: e.target.value }))} placeholder={`e.g. 2 = $${(2 * unitSize).toFixed(0)}`} style={inputStyle} />
+                <input value={form.stake_units} onChange={e => setForm(f => ({ ...f, stake_units: e.target.value }))} style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>Sportsbook</label>
+                <label style={labelStyle}>Sportsbook <span style={optionalTag}>(optional)</span></label>
                 <select value={form.sportsbook} onChange={e => setForm(f => ({ ...f, sportsbook: e.target.value }))} style={selectStyle}>
-                  <option value="">Select (optional)</option>
+                  <option value="">Select</option>
                   {SPORTSBOOKS.map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
@@ -671,51 +675,42 @@ export default function Bets() {
                 </div>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={labelStyle}>Notes</label>
-                <input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional — reasoning..." style={inputStyle} />
+                <label style={labelStyle}>Notes <span style={optionalTag}>(optional)</span></label>
+                <input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={inputStyle} />
               </div>
             </div>
 
           ) : (
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
               <div>
-                <label style={labelStyle}>Fight</label>
-                <select value={form.fight_id} onChange={e => { setForm(f => ({ ...f, fight_id: e.target.value, pick: '' })); setCustomPick(false) }} style={{ ...selectStyle, opacity: fights.length ? 1 : 0.5 }}>
-                  <option value="">Select fight (optional)</option>
+                <label style={labelStyle}>Fight *</label>
+                <select value={form.fight_id} onChange={e => setForm(f => ({ ...f, fight_id: e.target.value, pick: '' }))} disabled={!fights.length} style={{ ...selectStyle, opacity: fights.length ? 1 : 0.5 }}>
+                  <option value="">Select fight</option>
                   {fights.map(f => <option key={f.id} value={f.id}>{f.fighter_a} vs {f.fighter_b}</option>)}
                 </select>
               </div>
               <div>
                 <label style={labelStyle}>Pick *</label>
-                {selectedFight && !customPick ? (
-                  <select value={form.pick} onChange={e => {
-                    if (e.target.value === '__custom') { setCustomPick(true); setForm(f => ({ ...f, pick: '' })) }
-                    else setForm(f => ({ ...f, pick: e.target.value }))
-                  }} style={selectStyle}>
-                    <option value="">Select fighter</option>
+                <select value={form.pick} onChange={e => setForm(f => ({ ...f, pick: e.target.value }))} disabled={!selectedFight} style={{ ...selectStyle, opacity: selectedFight ? 1 : 0.5 }}>
+                  <option value="">{selectedFight ? 'Select fighter' : 'Pick a fight first'}</option>
+                  {selectedFight && <>
                     <option value={selectedFight.fighter_a}>{selectedFight.fighter_a}</option>
                     <option value={selectedFight.fighter_b}>{selectedFight.fighter_b}</option>
-                    <option value="__custom">Other (type manually)</option>
-                  </select>
-                ) : (
-                  <div>
-                    <input value={form.pick} onChange={e => setForm(f => ({ ...f, pick: e.target.value }))} placeholder="e.g. Islam Makhachev" style={inputStyle} />
-                    {selectedFight && <button type="button" onClick={() => { setCustomPick(false); setForm(f => ({ ...f, pick: '' })) }} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px', marginTop: '4px' }}>← Choose from list</button>}
-                  </div>
-                )}
+                  </>}
+                </select>
               </div>
               <div>
                 <label style={labelStyle}>Odds (American) *</label>
-                <input value={form.odds} onChange={e => setForm(f => ({ ...f, odds: e.target.value }))} placeholder="-150 or +200" style={inputStyle} />
+                <input value={form.odds} onChange={e => setForm(f => ({ ...f, odds: e.target.value }))} style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>Stake (units) *</label>
-                <input value={form.stake_units} onChange={e => setForm(f => ({ ...f, stake_units: e.target.value }))} placeholder={`e.g. 2 = $${(2 * unitSize).toFixed(0)}`} style={inputStyle} />
+                <input value={form.stake_units} onChange={e => setForm(f => ({ ...f, stake_units: e.target.value }))} style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>Sportsbook</label>
+                <label style={labelStyle}>Sportsbook <span style={optionalTag}>(optional)</span></label>
                 <select value={form.sportsbook} onChange={e => setForm(f => ({ ...f, sportsbook: e.target.value }))} style={selectStyle}>
-                  <option value="">Select (optional)</option>
+                  <option value="">Select</option>
                   {SPORTSBOOKS.map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
@@ -738,14 +733,14 @@ export default function Bets() {
                 </div>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={labelStyle}>Notes</label>
-                <input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional — reasoning..." style={inputStyle} />
+                <label style={labelStyle}>Notes <span style={optionalTag}>(optional)</span></label>
+                <input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={inputStyle} />
               </div>
             </div>
           )}
 
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={handleSubmit} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving...' : 'Save bet'}</button>
+            <button onClick={handleSubmit} disabled={saving || !canSave} style={{ ...btnPrimary, opacity: saving || !canSave ? 0.5 : 1, cursor: saving || !canSave ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save bet'}</button>
             <button onClick={resetAll} style={btnGhost}>Cancel</button>
           </div>
         </div>
