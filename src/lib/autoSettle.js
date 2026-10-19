@@ -24,6 +24,22 @@ const namesMatch = (pick, winner) => {
   return pLast.length > 2 && pLast === wLast;
 };
 
+const parseMethodBet = (pick) => {
+  const match = pick?.match(/^(.+?)\s+by\s+(.+)$/i);
+  if (!match) return null;
+  return { fighter: match[1].trim(), method: match[2].trim().toLowerCase() };
+};
+
+const methodMatches = (betMethod, fightMethod) => {
+  if (!betMethod || !fightMethod) return false;
+  const b = betMethod.toLowerCase();
+  const f = fightMethod.toLowerCase();
+  if (b.includes("ko") || b.includes("tko")) return f.includes("ko") || f.includes("tko");
+  if (b.includes("sub")) return f.includes("sub");
+  if (b.includes("decision")) return f.includes("decision");
+  return false;
+};
+
 // Notes look like "Leg 1: Pick (+odds) - A vs B | Leg 2: ..."
 const parseParlayLegs = (notes) => {
   if (!notes) return [];
@@ -95,13 +111,32 @@ export const autoSettleBets = async (userId) => {
       try {
         const winnerMap = await buildWinnerMap(date);
         if (!Object.keys(winnerMap).length) continue;
+        const apiFights = await getFightsByDate(date).catch(() => []);
 
         for (const bet of bets) {
           let result = null;
-          for (const [fighter, winner] of Object.entries(winnerMap)) {
-            if (namesMatch(bet.pick, fighter) || namesMatch(bet.pick, winner)) {
-              result = namesMatch(bet.pick, winner) ? "win" : "loss";
-              break;
+          const methodBet = parseMethodBet(bet.pick);
+          if (methodBet) {
+            for (const fight of apiFights) {
+              const f1 = fight.fighters?.first?.name;
+              const f2 = fight.fighters?.second?.name;
+              const winner = fight.fighters?.first?.winner ? f1
+                : fight.fighters?.second?.winner ? f2 : null;
+              const fightMethod = fight.method || fight.finish || "";
+              if (namesMatch(methodBet.fighter, winner)) {
+                result = methodMatches(methodBet.method, fightMethod) ? "win" : "loss";
+                break;
+              } else if (winner && (namesMatch(methodBet.fighter, f1) || namesMatch(methodBet.fighter, f2))) {
+                result = "loss";
+                break;
+              }
+            }
+          } else {
+            for (const [fighter, winner] of Object.entries(winnerMap)) {
+              if (namesMatch(bet.pick, fighter) || namesMatch(bet.pick, winner)) {
+                result = namesMatch(bet.pick, winner) ? "win" : "loss";
+                break;
+              }
             }
           }
 

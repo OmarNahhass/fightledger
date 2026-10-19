@@ -94,6 +94,11 @@ export const getFightsByDate = async (dateStr) => {
         category: comp.type?.text || event.name || "",
         status: { short: completed ? "FT" : "NS" },
         winner,
+        // e.g. "Decision", "Submission", "Kotko" (ESPN's KO/TKO)
+        method:
+          comp.details
+            ?.find((d) => /^Unofficial Winner/i.test(d.type?.text || ""))
+            ?.type.text.replace(/^Unofficial Winner\s*/i, "") || "",
         eventName: event.name,
         eventId: event.id,
         competitionId: comp.id,
