@@ -30,14 +30,16 @@ const parseMethodBet = (pick) => {
   return { fighter: match[1].trim(), method: match[2].trim().toLowerCase() };
 };
 
+// null = can't tell from ESPN's data (it only reports KO/TKO, Submission or
+// Decision), so the bet is left pending for manual settling
 const methodMatches = (betMethod, fightMethod) => {
-  if (!betMethod || !fightMethod) return false;
+  if (!betMethod || !fightMethod) return null;
   const b = betMethod.toLowerCase();
   const f = fightMethod.toLowerCase();
-  if (b.includes("ko") || b.includes("tko")) return f.includes("ko") || f.includes("tko");
-  if (b.includes("sub")) return f.includes("sub");
-  if (b.includes("decision")) return f.includes("decision");
-  return false;
+  if (b === "ko/tko") return f.includes("ko") || f.includes("tko");
+  if (b === "submission") return f.includes("sub");
+  if (b === "decision") return f.includes("decision");
+  return null;
 };
 
 // Notes look like "Leg 1: Pick (+odds) - A vs B | Leg 2: ..."
@@ -124,7 +126,8 @@ export const autoSettleBets = async (userId) => {
                 : fight.fighters?.second?.winner ? f2 : null;
               const fightMethod = fight.method || fight.finish || "";
               if (namesMatch(methodBet.fighter, winner)) {
-                result = methodMatches(methodBet.method, fightMethod) ? "win" : "loss";
+                const matched = methodMatches(methodBet.method, fightMethod);
+                if (matched !== null) result = matched ? "win" : "loss";
                 break;
               } else if (winner && (namesMatch(methodBet.fighter, f1) || namesMatch(methodBet.fighter, f2))) {
                 result = "loss";
